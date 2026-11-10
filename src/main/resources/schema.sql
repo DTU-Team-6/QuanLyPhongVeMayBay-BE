@@ -101,8 +101,7 @@ CREATE TABLE `chuyen_bay` (
     `ma_san_bay_den` VARCHAR(10) NOT NULL COMMENT 'Sân bay hạ cánh',
     `thoi_gian_khoi_hanh` DATETIME NOT NULL COMMENT 'Ngày giờ cất cánh',
     `thoi_gian_ha_canh` DATETIME NOT NULL COMMENT 'Ngày giờ hạ cánh (hỗ trợ qua đêm)',
-    `trang_thai` ENUM('DUNG_GIO', 'DELAY', 'DA_HUY', 'HOAN_TAT') NOT NULL DEFAULT 'DUNG_GIO',
-    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `trang_thai` ENUM('DUNG_GIO', 'DELAY', 'DA_HUY') NOT NULL DEFAULT 'DUNG_GIO',
     PRIMARY KEY (`id`),
     KEY `idx_chuyenbay_search` (`ma_san_bay_di`, `ma_san_bay_den`, `thoi_gian_khoi_hanh`, `trang_thai`),
     CONSTRAINT `fk_chuyenbay_hang` FOREIGN KEY (`ma_hang`) REFERENCES `hang_hang_khong` (`ma_hang`) ON UPDATE CASCADE,
@@ -254,7 +253,7 @@ CREATE TABLE `thanh_toan` (
 CREATE TABLE `xac_thuc_token` (
     `id` BIGINT NOT NULL AUTO_INCREMENT,
     `user_id` BIGINT NOT NULL,
-    `token_hash` VARCHAR(255) NOT NULL COMMENT 'Lưu token ở dạng băm SHA-256 chống rò rỉ DB',
+    `token_hash` CHAR(64) NOT NULL COMMENT 'Lưu SHA-256 dạng hex của token gốc (không lưu token rõ)',
     `loai_token` ENUM('XAC_THUC_EMAIL', 'QUEN_MAT_KHAU') NOT NULL,
     `da_su_dung` BOOLEAN NOT NULL DEFAULT FALSE COMMENT 'Chống replay attack: Mỗi token chỉ dùng 1 lần',
     `het_han` DATETIME NOT NULL,
