@@ -99,6 +99,37 @@ class ChuyenBayControllerTest {
     }
 
     @Test
+    void getTopCheapFlights_shouldReturnRfc9457WhenLimitExceedsMax() throws Exception {
+        mockMvc.perform(get("/api/v1/flights/top-cheap").param("limit", "51"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.details[0].field").value("limit"));
+    }
+
+    @Test
+    void getTopCheapFlights_shouldReturnTypeMismatchWhenLimitNotNumber() throws Exception {
+        mockMvc.perform(get("/api/v1/flights/top-cheap").param("limit", "abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value("INVALID_PARAMETER"))
+                .andExpect(jsonPath("$.details[0].field").value("limit"))
+                .andExpect(jsonPath("$.details[0].code").value("TYPE_MISMATCH"));
+    }
+
+    @Test
+    void unknownEndpoint_shouldReturnEndpointNotFoundRfc9457() throws Exception {
+        mockMvc.perform(get("/api/v1/flights/khong-ton-tai"))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.code").value("ENDPOINT_NOT_FOUND"))
+                .andExpect(jsonPath("$.details", hasSize(0)));
+    }
+
+    @Test
     void getTopCheapFlights_shouldReturnRfc9457WhenDatabaseUnavailable() throws Exception {
         when(chuyenBayService.getTopCheapFlights(10))
                 .thenThrow(new DataAccessResourceFailureException("Connection refused"));

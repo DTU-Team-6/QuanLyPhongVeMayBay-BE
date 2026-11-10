@@ -25,6 +25,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -99,7 +100,7 @@ public class ChuyenBayService {
         ZonedDateTime arrTime = chuyenBay.getThoiGianHaCanh().atZone(arrZone);
         long durationMinutes = Math.max(0L, Duration.between(depTime.toInstant(), arrTime.toInstant()).toMinutes());
 
-        BigDecimal giaBan = hangVe.getGiaBan();
+        BigDecimal giaBan = hangVe.getGiaBan() != null ? hangVe.getGiaBan() : BigDecimal.ZERO;
         BigDecimal thuePhi = hangVe.getThuePhi() != null ? hangVe.getThuePhi() : BigDecimal.ZERO;
         BigDecimal tongGiaVe = giaBan.add(thuePhi);
 
@@ -142,7 +143,10 @@ public class ChuyenBayService {
 
     private ZoneId resolveZoneId(SanBay sanBay) {
         if (sanBay != null && sanBay.getMaSanBay() != null) {
-            return AIRPORT_TIMEZONES.getOrDefault(sanBay.getMaSanBay().toUpperCase(), TimeConfig.DEFAULT_VN_ZONE);
+            return AIRPORT_TIMEZONES.getOrDefault(
+                    sanBay.getMaSanBay().toUpperCase(Locale.ROOT),
+                    TimeConfig.DEFAULT_VN_ZONE
+            );
         }
         return TimeConfig.DEFAULT_VN_ZONE;
     }
