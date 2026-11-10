@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.transaction.TransactionException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -20,6 +21,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -67,13 +69,19 @@ public class GlobalExceptionHandler {
             MethodArgumentNotValidException ex,
             HttpServletRequest request
     ) {
-        List<ErrorDetail> details = ex.getBindingResult().getFieldErrors().stream()
-                .map(err -> new ErrorDetail(
-                        err.getField(),
-                        "INVALID_FIELD",
-                        err.getDefaultMessage() != null ? err.getDefaultMessage() : "Giá trị không hợp lệ"
-                ))
-                .toList();
+        List<ErrorDetail> details = new ArrayList<>();
+        ex.getBindingResult().getFieldErrors().forEach(err -> {
+            String errorCode = err.isBindingFailure() ? "TYPE_MISMATCH" : "INVALID_FIELD";
+            String errorMessage = err.isBindingFailure()
+                    ? "Giá trị của trường '" + err.getField() + "' không đúng định dạng"
+                    : (err.getDefaultMessage() != null ? err.getDefaultMessage() : "Giá trị không hợp lệ");
+            details.add(new ErrorDetail(err.getField(), errorCode, errorMessage));
+        });
+        ex.getBindingResult().getGlobalErrors().forEach(err -> details.add(new ErrorDetail(
+                err.getObjectName(),
+                "INVALID_FIELD",
+                err.getDefaultMessage() != null ? err.getDefaultMessage() : "Dữ liệu không hợp lệ"
+        )));
 
         return buildProblemResponse(
                 HttpStatus.BAD_REQUEST,
@@ -82,6 +90,21 @@ public class GlobalExceptionHandler {
                 "Một hoặc nhiều trường dữ liệu không đạt điều kiện kiểm tra.",
                 request,
                 details
+        );
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ProblemDetail> handleHttpMessageNotReadable(
+            HttpMessageNotReadableException ex,
+            HttpServletRequest request
+    ) {
+        return buildProblemResponse(
+                HttpStatus.BAD_REQUEST,
+                "INVALID_REQUEST_BODY",
+                "Dữ liệu JSON không hợp lệ",
+                "Nội dung yêu cầu sai định dạng JSON, kiểu ngày (yyyy-MM-dd) hoặc giá trị enum không hợp lệ.",
+                request,
+                List.of()
         );
     }
 
