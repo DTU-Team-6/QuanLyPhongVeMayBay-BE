@@ -11,16 +11,18 @@
 - `3db34b6`: Đồng bộ `schema.sql` (`CHAR(64)` trên `xac_thuc_token`, bỏ `created_at` trên `chuyen_bay`) và `DATABASE_DESIGN.md` theo PDF
 - `1595879`: Bước 1 - Thiết lập `build.gradle`, `application.yml`, `CorsConfig`, `OpenApiConfig`, `CommonInfoProperties`, `ApiResponse`, `GlobalExceptionHandler` (RFC 9457)
 - `bfdfaad`: Bước 2 - Tạo Entity, Enum và Repository (`SanBay`, `HangHangKhong`, `ChuyenBay`, `HangVeChuyenBay`, `TinTuc`)
-- Bước 3: Xây dựng `GET /api/v1/flights/top-cheap` (`TimeConfig`, DTO flight, `ChuyenBayService`, `ChuyenBayController`, test `ChuyenBayServiceTest` 2/2 PASS, `ChuyenBayControllerTest` 4/4 PASS)
+- `b681003`: Bước 3 - Xây dựng `GET /api/v1/flights/top-cheap` (`TimeConfig`, DTO flight, `ChuyenBayService`, `ChuyenBayController`, `ChuyenBayServiceTest` 2/2 PASS, `ChuyenBayControllerTest` 4/4 PASS)
+- Bước 4: Xây dựng `GET /api/v1/public/common-info` (`dto/publicinfo/*`, `ThongTinChungService`, `CongKhaiController`, `ThongTinChungServiceTest` 2/2 PASS, `CongKhaiControllerTest` 3/3 PASS)
 
 ## Đang dở (chưa commit hoặc chưa chạy được)
 
-- Bước 4: Xây dựng DTO, Service, Controller và Test cho `GET /api/v1/public/common-info`
+- Bước 5: Kiểm thử thực tế (MySQL / Swagger / endpoint), kiểm tra `QuanlyvemaybayApplicationTests` và `./gradlew build`
 
 ## Việc tiếp theo (theo thứ tự)
 
-1. Bước 4: Xây dựng `GET /api/v1/public/common-info` (cấu hình tĩnh `application.yml` + dynamic banners/thông báo từ `tin_tuc`, test MockMvc/Unit) + commit
-2. Bước 5: Chạy kiểm thử toàn bộ (`./gradlew build`), kiểm tra Swagger/endpoint thực tế, xoá `progress/develop.md` trước khi PR
+1. Kiểm tra chạy thực tế với MySQL (`bootRun` / curl / Swagger) nếu DB sẵn sàng
+2. Chạy `./gradlew build` kiểm tra tổng thể
+3. Xoá `progress/develop.md` khi hoàn thành xong để sẵn sàng tạo PR
 
 ## Quyết định đã chốt và lưu ý
 
