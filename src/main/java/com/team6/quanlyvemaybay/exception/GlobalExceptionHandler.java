@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.TransactionException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -192,9 +193,9 @@ public class GlobalExceptionHandler {
         );
     }
 
-    @ExceptionHandler(DataAccessException.class)
+    @ExceptionHandler({DataAccessException.class, TransactionException.class})
     public ResponseEntity<ProblemDetail> handleDataAccessException(
-            DataAccessException ex,
+            Exception ex,
             HttpServletRequest request
     ) {
         log.error("Lỗi truy xuất cơ sở dữ liệu tại {}: {}", request.getRequestURI(), ex.getMessage(), ex);

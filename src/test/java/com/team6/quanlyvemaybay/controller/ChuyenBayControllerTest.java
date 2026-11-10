@@ -16,6 +16,7 @@ import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.CannotCreateTransactionException;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -101,6 +102,19 @@ class ChuyenBayControllerTest {
     void getTopCheapFlights_shouldReturnRfc9457WhenDatabaseUnavailable() throws Exception {
         when(chuyenBayService.getTopCheapFlights(10))
                 .thenThrow(new DataAccessResourceFailureException("Connection refused"));
+
+        mockMvc.perform(get("/api/v1/flights/top-cheap"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(500))
+                .andExpect(jsonPath("$.code").value("DATABASE_ERROR"))
+                .andExpect(jsonPath("$.details", hasSize(0)));
+    }
+
+    @Test
+    void getTopCheapFlights_shouldReturnDatabaseErrorWhenTransactionFails() throws Exception {
+        when(chuyenBayService.getTopCheapFlights(10))
+                .thenThrow(new CannotCreateTransactionException("Unable to acquire JDBC Connection"));
 
         mockMvc.perform(get("/api/v1/flights/top-cheap"))
                 .andExpect(status().isInternalServerError())
