@@ -560,7 +560,7 @@ Table NGUOI_DUNG {
   ho_ten varchar(100) [not null]
   ngay_sinh date
   gioi_tinh varchar(10) [default: 'Khac']
-  so_dien_thoai varchar(20) [note: "Chuẩn E.164 (+)"]
+  so_dien_thoai varchar(16) [note: "Chuẩn E.164 có dấu +"]
   dia_chi varchar(255)
   anh_dai_dien varchar(255)
   vai_tro varchar(20) [not null, note: "ADMIN, NHAN_VIEN, KHACH_HANG"]
@@ -619,7 +619,7 @@ Table DAT_CHO {
   khach_hang_id bigint [ref: > KHACH_HANG.nguoi_dung_id]
   nhan_vien_id bigint [ref: > NHAN_VIEN.nguoi_dung_id]
   email_nguoi_dat varchar(100) [not null]
-  so_dien_thoai_nguoi_dat varchar(20) [not null]
+  so_dien_thoai_nguoi_dat varchar(16) [not null]
   ho_ten_nguoi_dat varchar(100) [not null]
   loai_chuyen_bay varchar(20) [default: 'MOT_CHIEU']
   so_nguoi_lon int [default: 1]
@@ -638,7 +638,7 @@ Table HANH_KHACH {
   ngay_sinh date [not null, note: "Kiểm tra tuổi Trẻ em/Em bé"]
   gioi_tinh varchar(10) [default: 'Nam']
   email varchar(100)
-  so_dien_thoai varchar(20)
+  so_dien_thoai varchar(16)
   cmnd_passport varchar(20)
   loai_hanh_khach varchar(20) [default: 'NGUOI_LON']
   nguoi_lon_di_kem_id bigint [ref: > HANH_KHACH.id, note: "Self-FK bảo hộ em bé"]
@@ -693,9 +693,9 @@ Table THANH_TOAN {
 Table XAC_THUC_TOKEN {
   id bigint [pk, increment]
   user_id bigint [ref: > NGUOI_DUNG.id]
-  token_hash char(64) [unique, not null, note: "Lưu SHA-256 dạng hex"]
+  token_hash char(64) [unique, not null, note: "SHA-256 dạng hex; không lưu token gốc"]
   loai_token varchar(50) [not null]
-  da_su_dung boolean [default: false, note: "Dùng 1 lần"]
+  da_su_dung boolean [not null, default: false, note: "Mỗi token chỉ dùng một lần"]
   het_han datetime [not null]
 }
 
@@ -711,11 +711,11 @@ Table AUDIT_LOG {
 Table TIN_TUC {
   id bigint [pk, increment]
   nguoi_dung_id bigint [ref: > NGUOI_DUNG.id]
-  loai_tin varchar(30) [default: 'KHUYEN_MAI', note: "KHUYEN_MAI, QUY_DINH_HANH_LY, GIOI_THIEU, THONG_BAO"]
+  loai_tin varchar(30) [not null, default: 'KHUYEN_MAI', note: "KHUYEN_MAI, QUY_DINH_HANH_LY, GIOI_THIEU, THONG_BAO"]
   tieu_de varchar(255) [not null]
   noi_dung text [not null]
   anh_dai_dien varchar(255)
-  trang_thai varchar(20) [default: 'HIEN_THI']
+  trang_thai varchar(20) [not null, default: 'HIEN_THI', note: "HIEN_THI, AN"]
   thoi_gian_tao datetime [default: `now()`]
 }
 
