@@ -1,0 +1,34 @@
+# Tiến độ nhánh `develop`
+
+## Task hiện tại
+
+- Chức năng: API Trang chủ, Header/Footer (`GET /api/v1/public/common-info`) và Top 10 chuyến bay giá rẻ (`GET /api/v1/flights/top-cheap`)
+- Nhánh: `develop` (đồng bộ từ `main` + cherry-pick `ee247bb` ở `3db34b6`)
+- Cập nhật lần cuối: 2026-11-10
+
+## Đã xong (đã commit)
+
+- `3db34b6`: Đồng bộ `schema.sql` (`CHAR(64)` trên `xac_thuc_token`, bỏ `created_at` trên `chuyen_bay`) và `DATABASE_DESIGN.md` theo PDF
+- Bước 1: Thiết lập `build.gradle` (WebMVC, JPA, Validation, MySQL, SpringDoc 3.0.3), `application.yml`, `CorsConfig`, `OpenApiConfig`, `CommonInfoProperties`, `ApiResponse`, `GlobalExceptionHandler` (RFC 9457) — `./gradlew build -x test` PASS
+
+## Đang dở (chưa commit hoặc chưa chạy được)
+
+- Bước 2: Tạo các Entity & Repository (`SanBay`, `HangHangKhong`, `ChuyenBay`, `HangVeChuyenBay`, `TinTuc`)
+
+## Việc tiếp theo (theo thứ tự)
+
+1. Bước 2: Tạo Entity, Enum, Repository cho 5 bảng liên quan + chạy build + commit
+2. Bước 3: Xây dựng `GET /api/v1/flights/top-cheap` (DTO không có `gia_goc`, giờ bay `dateTime` + `timeZone`, test MockMvc/Unit) + commit
+3. Bước 4: Xây dựng `GET /api/v1/public/common-info` (cấu hình tĩnh `application.yml` + dynamic banners/thông báo từ `tin_tuc`, test MockMvc/Unit) + commit
+4. Bước 5: Chạy kiểm thử toàn bộ (`./gradlew build`), kiểm tra Swagger/endpoint thực tế, xoá `progress/develop.md` trước khi PR
+
+## Quyết định đã chốt và lưu ý
+
+- Dùng DB `quanlyvemaybay` theo `schema.sql` hiện tại (`ddl-auto: none`, không thêm bảng mới).
+- Giữ path đề bài (`/api/v1/flights/top-cheap`, `/api/v1/public/common-info`); success trả `{statusCode, message, data}`, lỗi theo RFC 9457 (`ProblemDetail` + `code` + `details`).
+- `common-info` đọc cấu hình tĩnh từ `application.yml` kết hợp query bài viết `HIEN_THI` từ `tin_tuc`.
+- Đã cài Temurin JDK 21 (`21.0.13+9`).
+
+## Lỗi đang gặp (nếu có)
+
+- (Không có)
