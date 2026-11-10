@@ -9,18 +9,18 @@
 ## Đã xong (đã commit)
 
 - `3db34b6`: Đồng bộ `schema.sql` (`CHAR(64)` trên `xac_thuc_token`, bỏ `created_at` trên `chuyen_bay`) và `DATABASE_DESIGN.md` theo PDF
-- Bước 1: Thiết lập `build.gradle` (WebMVC, JPA, Validation, MySQL, SpringDoc 3.0.3), `application.yml`, `CorsConfig`, `OpenApiConfig`, `CommonInfoProperties`, `ApiResponse`, `GlobalExceptionHandler` (RFC 9457) — `./gradlew build -x test` PASS
+- `1595879`: Bước 1 - Thiết lập `build.gradle`, `application.yml`, `CorsConfig`, `OpenApiConfig`, `CommonInfoProperties`, `ApiResponse`, `GlobalExceptionHandler` (RFC 9457)
+- Bước 2: Tạo các Entity, Enum (`TrangThaiHang`, `TrangThaiChuyenBay`, `LoaiKhoang`, `LoaiTinTuc`, `TrangThaiTinTuc`) và Repository (`SanBayRepository`, `HangHangKhongRepository`, `ChuyenBayRepository`, `HangVeChuyenBayRepository`, `TinTucRepository`) — `./gradlew build -x test` PASS
 
 ## Đang dở (chưa commit hoặc chưa chạy được)
 
-- Bước 2: Tạo các Entity & Repository (`SanBay`, `HangHangKhong`, `ChuyenBay`, `HangVeChuyenBay`, `TinTuc`)
+- Bước 3: Xây dựng DTO, Service, Controller và Test cho `GET /api/v1/flights/top-cheap`
 
 ## Việc tiếp theo (theo thứ tự)
 
-1. Bước 2: Tạo Entity, Enum, Repository cho 5 bảng liên quan + chạy build + commit
-2. Bước 3: Xây dựng `GET /api/v1/flights/top-cheap` (DTO không có `gia_goc`, giờ bay `dateTime` + `timeZone`, test MockMvc/Unit) + commit
-3. Bước 4: Xây dựng `GET /api/v1/public/common-info` (cấu hình tĩnh `application.yml` + dynamic banners/thông báo từ `tin_tuc`, test MockMvc/Unit) + commit
-4. Bước 5: Chạy kiểm thử toàn bộ (`./gradlew build`), kiểm tra Swagger/endpoint thực tế, xoá `progress/develop.md` trước khi PR
+1. Bước 3: Xây dựng `GET /api/v1/flights/top-cheap` (DTO không có `gia_goc`, giờ bay `dateTime` + `timeZone`, test MockMvc/Unit) + commit
+2. Bước 4: Xây dựng `GET /api/v1/public/common-info` (cấu hình tĩnh `application.yml` + dynamic banners/thông báo từ `tin_tuc`, test MockMvc/Unit) + commit
+3. Bước 5: Chạy kiểm thử toàn bộ (`./gradlew build`), kiểm tra Swagger/endpoint thực tế, xoá `progress/develop.md` trước khi PR
 
 ## Quyết định đã chốt và lưu ý
 
