@@ -1,0 +1,61 @@
+spring:
+  application:
+    name: quanlyvemaybay
+
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:quanlyvemaybay}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        jdbc:
+          time_zone: UTC
+
+  sql:
+    init:
+      mode: never
+
+server:
+  port: ${SERVER_PORT:8080}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+app:
+  frontend-url: ${APP_FRONTEND_URL:http://localhost:5173}
+  common-info:
+    brand-name: "DTU Team 6 Airlines"
+    slogan: "Bay an toàn - Đặt vé nhanh chóng - Giá tốt mỗi ngày"
+    logo-url: "/assets/logos/brand-logo.png"
+    copyright: "© 2026 DTU Team 6 - Hệ thống Quản lý Phòng Vé Máy Bay"
+    contact:
+      hotline: "1900 1234"
+      support-phone: "0236 3827 111"
+      email: "support@dtuteam6airlines.vn"
+      address: "254 Nguyễn Văn Linh, Quận Thanh Khê, TP. Đà Nẵng"
+      working-hours: "07:00 - 22:00 (Thứ 2 - Chủ Nhật)"
+    social-links:
+      facebook: "https://facebook.com/dtuteam6airlines"
+      zalo: "https://zalo.me/dtuteam6airlines"
+      youtube: "https://youtube.com/@dtuteam6airlines"
+    policy-links:
+      - title: "Giới thiệu"
+        url: "/tin-tuc?loai=GIOI_THIEU"
+      - title: "Quy định hành lý"
+        url: "/tin-tuc?loai=QUY_DINH_HANH_LY"
+      - title: "Khuyến mãi mới nhất"
+        url: "/tin-tuc?loai=KHUYEN_MAI"
+      - title: "Điều khoản sử dụng"
+        url: "/dieu-khoan-su-dung"
+      - title: "Chính sách bảo mật"
+        url: "/chinh-sach-bao-mat"

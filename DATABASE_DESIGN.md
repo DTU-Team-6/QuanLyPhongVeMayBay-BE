@@ -250,7 +250,7 @@ erDiagram
 ### 2.2. Phân cấp & Quan hệ HANH_KHACH
 - **Superclass:** `HANH_KHACH` (quản lý danh sách người bay theo đơn đặt chỗ `dat_cho_id`, có thêm `ngay_sinh` để kiểm soát độ tuổi).
 - **Phân loại qua `loai_hanh_khach`:**
-  - `NGUOI_LON` ($\ge 12$ tuổi): Bắt buộc có CMND/Passport, `nguoi_lon_di_kem_id = NULL`.
+  - `NGUOI_LON` (≥ 12 tuổi): Bắt buộc có CMND/Passport, `nguoi_lon_di_kem_id = NULL`.
   - `TRE_EM` (2 đến dưới 12 tuổi): Giấy khai sinh/hộ chiếu, `nguoi_lon_di_kem_id` (Self-FK trỏ tới người lớn bảo hộ).
   - `EM_BE` (Dưới 2 tuổi): Không bắt buộc ghế riêng (`so_ghe = NULL`), `nguoi_lon_di_kem_id` (Self-FK trỏ tới người lớn bế đi cùng).
 
@@ -296,7 +296,7 @@ flowchart TD
 ## 3. CHUẨN HÓA 3NF & CÁC NGUYÊN TẮC THIẾT KẾ ĐẶC BIỆT
 
 1. **Loại bỏ trùng lặp khóa ngoại `chuyen_bay_id` ở `VE_MAY_BAY`:**
-   - Trong mô hình dữ liệu: `CHUYEN_BAY` $\rightarrow$ `HANG_VE_CHUYEN_BAY` $\rightarrow$ `VE_MAY_BAY`.
+   - Trong mô hình dữ liệu: `CHUYEN_BAY` → `HANG_VE_CHUYEN_BAY` → `VE_MAY_BAY`.
    - Vì `HANG_VE_CHUYEN_BAY` đã lưu `chuyen_bay_id`, việc bỏ cột `chuyen_bay_id` ở `VE_MAY_BAY` giúp loại bỏ hoàn toàn phụ thuộc bắc cầu, đạt **chuẩn 3NF hoàn hảo**.
 2. **Quản lý Dịch vụ chuyến bay 2 tầng (Catalog - Junction Table):**
    - Bảng `DICH_VU_CHUYEN_BAY`: Danh mục dịch vụ chuẩn do Admin cấu hình (Suất ăn nóng, Chọn chỗ trước, Phòng chờ VIP...).
@@ -481,7 +481,7 @@ flowchart TD
 | :--- | :--- | :--- | :--- |
 | `id` | BIGINT | PRIMARY KEY, AUTO_INCREMENT | ID token |
 | `user_id` | BIGINT | NOT NULL, FK -> `nguoi_dung` | Thuộc tài khoản nào |
-| `token_hash` | VARCHAR(255) | UNIQUE, NOT NULL | Lưu chuỗi token băm SHA-256 (bảo vệ chống rò rỉ DB) |
+| `token_hash` | CHAR(64) | UNIQUE, NOT NULL | Lưu SHA-256 dạng hex của token gốc (không lưu token rõ) |
 | `loai_token` | VARCHAR(50) | NOT NULL | `XAC_THUC_EMAIL`, `QUEN_MAT_KHAU` |
 | `da_su_dung` | BOOLEAN | NOT NULL, DEFAULT FALSE | Chống tấn công Replay: mỗi token chỉ được dùng 1 lần |
 | `het_han` | DATETIME | NOT NULL | Thời hạn hết hiệu lực của token |
@@ -501,11 +501,11 @@ flowchart TD
 | :--- | :--- | :--- | :--- |
 | `id` | BIGINT | PRIMARY KEY, AUTO_INCREMENT | ID bài viết |
 | `nguoi_dung_id` | BIGINT | NOT NULL, FK -> `nguoi_dung` | Tác giả (Admin / Nhân viên) |
-| `loai_tin` | VARCHAR(30) | NOT NULL, DEFAULT 'KHUYEN_MAI' | Phân loại theo menu Figma: `KHUYEN_MAI`, `QUY_DINH_HANH_LY`, `GIOI_THIEU`, `THONG_BAO` |
+| `loai_tin` | ENUM | NOT NULL, DEFAULT 'KHUYEN_MAI' | Phân loại theo menu: `KHUYEN_MAI`, `QUY_DINH_HANH_LY`, `GIOI_THIEU`, `THONG_BAO` |
 | `tieu_de` | VARCHAR(255) | NOT NULL | Tiêu đề tin khuyến mãi / quy định |
 | `noi_dung` | LONGTEXT | NOT NULL | Toàn bộ nội dung bài viết |
 | `anh_dai_dien` | VARCHAR(255) | NULL | Ảnh bìa tin tức |
-| `trang_thai` | VARCHAR(20) | NOT NULL, DEFAULT 'HIEN_THI' | Trạng thái hiển thị trên website: `HIEN_THI`, `AN` |
+| `trang_thai` | ENUM | NOT NULL, DEFAULT 'HIEN_THI' | Trạng thái hiển thị trên website: `HIEN_THI`, `AN` |
 | `thoi_gian_tao` | DATETIME | DEFAULT CURRENT_TIMESTAMP | Thời điểm đăng tải |
 
 ### Bảng 18: `diem_den` (Cẩm nang điểm đến du lịch)
@@ -529,7 +529,7 @@ flowchart TD
 
 ---
 
-## 4. MÃ NGUỒN DBDiagram.io (DBML - Database Markup Language)
+## 5. MÃ NGUỒN DBDiagram.io (DBML - Database Markup Language)
 
 Bạn có thể sao chép trực tiếp toàn bộ khối mã DBML bên dưới và dán đè vào trang soạn thảo [dbdiagram.io](https://dbdiagram.io) để hiển thị sơ đồ hoàn hảo 100%, tự động liên kết các dây quan hệ mà không gặp bất kỳ lỗi logic nào:
 
@@ -693,7 +693,7 @@ Table THANH_TOAN {
 Table XAC_THUC_TOKEN {
   id bigint [pk, increment]
   user_id bigint [ref: > NGUOI_DUNG.id]
-  token_hash varchar(255) [unique, not null, note: "Băm SHA-256"]
+  token_hash char(64) [unique, not null, note: "Lưu SHA-256 dạng hex"]
   loai_token varchar(50) [not null]
   da_su_dung boolean [default: false, note: "Dùng 1 lần"]
   het_han datetime [not null]
