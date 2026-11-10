@@ -9,13 +9,13 @@
 ## Đã xong (đã commit)
 
 - `438dfa1`: Bước 1 - Entities (`NguoiDung`, `NhanVien`, `DatCho`, `VeMayBay`), Enums và nâng cấp `GlobalExceptionHandler`
-- Bước 2: Validation `@ValidDateRange`, bộ DTO lọc & kết quả (`dto/report/*`), Projections và Repository Aggregation (`DatChoRepository`, `VeMayBayRepository`, `HangVeChuyenBayRepository`) — `QuanlyvemaybayApplicationTests` PASS (toàn bộ JPQL queries hợp lệ với Hibernate 7)
+- `bd3c4f0`: Bước 2 - Validation `@ValidDateRange`, bộ DTO lọc/kết quả và Repository Aggregation Queries
+- Bước 3: `BaoCaoService`, `BaoCaoController` (`POST /api/v1/reports`, `GET /api/v1/reports/generate`) và `ThongKeController` (`GET /api/v1/statistics`) — `./gradlew build -x test` PASS
 
 ## Đang dở (đưa sang bước tiếp)
 
-- Bước 3: `BaoCaoService` & `BaoCaoController` (`POST /api/v1/reports`, `GET /api/v1/reports/generate`, `GET /api/v1/statistics`)
+- Bước 4: Viết Unit Test (`BaoCaoServiceTest`) và WebMvc Test (`BaoCaoControllerTest`, `ThongKeControllerTest`) cho toàn bộ trường hợp lọc, rỗng, thiếu tham số, `startDate > endDate`, sai kiểu ngày/enum
 
 ## Việc tiếp theo (theo thứ tự)
 
-1. Bước 3: `BaoCaoService` & `BaoCaoController` -> `./gradlew build -x test` -> commit
-2. Bước 4: `BaoCaoServiceTest` & `BaoCaoControllerTest` -> `./gradlew clean build` -> xoá file tiến độ & push nhánh
+1. Bước 4: `BaoCaoServiceTest`, `BaoCaoControllerTest`, `ThongKeControllerTest` -> `./gradlew clean build` -> commit -> xoá file tiến độ & push nhánh
