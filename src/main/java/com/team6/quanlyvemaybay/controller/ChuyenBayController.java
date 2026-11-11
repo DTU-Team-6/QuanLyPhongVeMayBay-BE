@@ -2,6 +2,8 @@ package com.team6.quanlyvemaybay.controller;
 
 import com.team6.quanlyvemaybay.dto.common.ApiResponse;
 import com.team6.quanlyvemaybay.dto.flight.TopCheapFlightResponse;
+import com.team6.quanlyvemaybay.dto.flight.FlightSearchResponse;
+import com.team6.quanlyvemaybay.dto.flight.FlightDetailResponse;
 import com.team6.quanlyvemaybay.service.ChuyenBayService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -12,7 +14,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.format.annotation.DateTimeFormat;
+import java.time.LocalDate;
 
 import java.util.List;
 
@@ -28,6 +33,22 @@ public class ChuyenBayController {
 
     public ChuyenBayController(ChuyenBayService chuyenBayService) {
         this.chuyenBayService = chuyenBayService;
+    }
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<FlightSearchResponse>>> search(
+            @RequestParam String maDi, @RequestParam String maDen,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate ngayDi,
+            @RequestParam(defaultValue = "1") @Min(1) @Max(9) int soNguoiLon,
+            @RequestParam(defaultValue = "0") @Min(0) @Max(9) int soTreEm,
+            @RequestParam(required = false) String maHang) {
+        var result = chuyenBayService.search(maDi, maDen, ngayDi, soNguoiLon, soTreEm, maHang);
+        return ResponseEntity.ok(ApiResponse.ok(result, "Lấy danh sách chuyến bay thành công"));
+    }
+
+    @GetMapping("/{id:\\d+}")
+    public ResponseEntity<ApiResponse<FlightDetailResponse>> detail(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.ok(chuyenBayService.detail(id), "Lấy chi tiết chuyến bay thành công"));
     }
 
     @Operation(

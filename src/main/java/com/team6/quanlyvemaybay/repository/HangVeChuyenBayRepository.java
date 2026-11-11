@@ -17,6 +17,36 @@ import java.util.List;
  */
 public interface HangVeChuyenBayRepository extends JpaRepository<HangVeChuyenBay, Long> {
 
+    @Query("""
+            SELECT hv FROM HangVeChuyenBay hv
+            JOIN FETCH hv.chuyenBay cb
+            JOIN FETCH cb.hangHangKhong h
+            JOIN FETCH cb.sanBayDi di
+            JOIN FETCH cb.sanBayDen den
+            WHERE di.maSanBay = :maDi AND den.maSanBay = :maDen
+              AND cb.thoiGianKhoiHanh >= :tu AND cb.thoiGianKhoiHanh < :denGio
+              AND cb.trangThai = :trangThai AND h.trangThai = :trangThaiHang
+              AND hv.soGheTrong >= :soCho
+              AND (:maHang IS NULL OR h.maHang = :maHang)
+            ORDER BY cb.thoiGianKhoiHanh ASC, hv.giaBan ASC
+            """)
+    List<HangVeChuyenBay> findForSearch(
+            @Param("maDi") String maDi, @Param("maDen") String maDen,
+            @Param("tu") LocalDateTime tu, @Param("denGio") LocalDateTime denGio,
+            @Param("trangThai") TrangThaiChuyenBay trangThai,
+            @Param("trangThaiHang") TrangThaiHang trangThaiHang,
+            @Param("soCho") int soCho, @Param("maHang") String maHang);
+
+    @Query("""
+            SELECT hv FROM HangVeChuyenBay hv
+            JOIN FETCH hv.chuyenBay cb
+            JOIN FETCH cb.hangHangKhong h
+            JOIN FETCH cb.sanBayDi
+            JOIN FETCH cb.sanBayDen
+            WHERE cb.id = :id
+            """)
+    List<HangVeChuyenBay> findByFlightIdWithDetails(@Param("id") Long id);
+
     /**
      * Lấy danh sách hạng vé rẻ nhất của các chuyến bay còn khả dụng và chưa cất cánh,
      * sắp xếp tăng dần theo tổng giá vé (giá bán + thuế phí).
