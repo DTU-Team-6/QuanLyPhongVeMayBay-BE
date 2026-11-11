@@ -10,6 +10,8 @@ import java.util.Optional;
 
 public interface NguoiDungRepository extends JpaRepository<NguoiDung, Long> {
     Optional<NguoiDung> findByTaiKhoanEmail(String taiKhoanEmail);
+    Optional<NguoiDung> findByTaiKhoanEmailIgnoreCase(String taiKhoanEmail);
+    boolean existsByTaiKhoanEmailIgnoreCase(String taiKhoanEmail);
 
     @Modifying
     @Query("update NguoiDung nd set nd.trangThai = 0 where nd.id = :id and nd.trangThai = 1")
