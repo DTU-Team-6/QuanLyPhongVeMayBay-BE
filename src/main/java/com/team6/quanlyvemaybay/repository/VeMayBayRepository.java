@@ -20,6 +20,31 @@ public interface VeMayBayRepository extends JpaRepository<VeMayBay, Long> {
 
     List<VeMayBay> findByDatChoId(Long datChoId);
 
+    List<VeMayBay> findByTrangThai(TrangThaiVe trangThai);
+
+    List<VeMayBay> findByDatChoMaDatCho(String maDatCho);
+
+    java.util.Optional<VeMayBay> findByMaVe(String maVe);
+
+    List<VeMayBay> findByMaVeIn(List<String> danhSachMaVe);
+
+    @Query("""
+            SELECT v FROM VeMayBay v
+            JOIN FETCH v.datCho dc
+            JOIN FETCH v.hangVe hv
+            JOIN FETCH hv.chuyenBay cb
+            JOIN FETCH cb.hangHangKhong hhk
+            JOIN FETCH cb.sanBayDi sbd
+            JOIN FETCH cb.sanBayDen sbden
+            WHERE (:maDatCho IS NULL OR dc.maDatCho = :maDatCho)
+              AND (:trangThai IS NULL OR v.trangThai = :trangThai)
+            ORDER BY dc.ngayDat DESC, v.id ASC
+            """)
+    List<VeMayBay> findTicketsWithFlightDetails(
+            @Param("maDatCho") String maDatCho,
+            @Param("trangThai") TrangThaiVe trangThai
+    );
+
     @Query("""
             SELECT hhk.maHang AS maHang,
                    hhk.tenHang AS tenHang,

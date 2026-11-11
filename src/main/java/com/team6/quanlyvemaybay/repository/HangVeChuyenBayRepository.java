@@ -23,6 +23,11 @@ public interface HangVeChuyenBayRepository extends JpaRepository<HangVeChuyenBay
             + "WHERE hv.id = :id AND hv.soGheTrong >= :soLuong")
     int reserveSeats(@Param("id") Long id, @Param("soLuong") int soLuong);
 
+    @Modifying
+    @Query("UPDATE HangVeChuyenBay hv SET hv.soGheTrong = hv.soGheTrong + :soLuong "
+            + "WHERE hv.id = :id AND hv.soGheTrong + :soLuong <= hv.tongSoGhe")
+    int releaseSeats(@Param("id") Long id, @Param("soLuong") int soLuong);
+
     @Query("""
             SELECT hv FROM HangVeChuyenBay hv
             JOIN FETCH hv.chuyenBay cb
