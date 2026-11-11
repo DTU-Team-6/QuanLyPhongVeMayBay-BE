@@ -6,6 +6,7 @@ import com.team6.quanlyvemaybay.entity.enums.TrangThaiHang;
 import com.team6.quanlyvemaybay.repository.projection.FlightOccupancyRow;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -16,6 +17,41 @@ import java.util.List;
  * Repository truy vấn hạng vé, giá bán và thống kê công suất ghế theo từng chuyến bay.
  */
 public interface HangVeChuyenBayRepository extends JpaRepository<HangVeChuyenBay, Long> {
+
+    @Modifying
+    @Query("UPDATE HangVeChuyenBay hv SET hv.soGheTrong = hv.soGheTrong - :soLuong "
+            + "WHERE hv.id = :id AND hv.soGheTrong >= :soLuong")
+    int reserveSeats(@Param("id") Long id, @Param("soLuong") int soLuong);
+
+    @Query("""
+            SELECT hv FROM HangVeChuyenBay hv
+            JOIN FETCH hv.chuyenBay cb
+            JOIN FETCH cb.hangHangKhong h
+            JOIN FETCH cb.sanBayDi di
+            JOIN FETCH cb.sanBayDen den
+            WHERE di.maSanBay = :maDi AND den.maSanBay = :maDen
+              AND cb.thoiGianKhoiHanh >= :tu AND cb.thoiGianKhoiHanh < :denGio
+              AND cb.trangThai = :trangThai AND h.trangThai = :trangThaiHang
+              AND hv.soGheTrong >= :soCho
+              AND (:maHang IS NULL OR h.maHang = :maHang)
+            ORDER BY cb.thoiGianKhoiHanh ASC, hv.giaBan ASC
+            """)
+    List<HangVeChuyenBay> findForSearch(
+            @Param("maDi") String maDi, @Param("maDen") String maDen,
+            @Param("tu") LocalDateTime tu, @Param("denGio") LocalDateTime denGio,
+            @Param("trangThai") TrangThaiChuyenBay trangThai,
+            @Param("trangThaiHang") TrangThaiHang trangThaiHang,
+            @Param("soCho") int soCho, @Param("maHang") String maHang);
+
+    @Query("""
+            SELECT hv FROM HangVeChuyenBay hv
+            JOIN FETCH hv.chuyenBay cb
+            JOIN FETCH cb.hangHangKhong h
+            JOIN FETCH cb.sanBayDi
+            JOIN FETCH cb.sanBayDen
+            WHERE cb.id = :id
+            """)
+    List<HangVeChuyenBay> findByFlightIdWithDetails(@Param("id") Long id);
 
     /**
      * Lấy danh sách hạng vé rẻ nhất của các chuyến bay còn khả dụng và chưa cất cánh,
