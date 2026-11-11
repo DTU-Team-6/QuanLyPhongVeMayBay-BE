@@ -9,9 +9,11 @@
 ## Đã xong
 
 - Thêm API `GET /api/v1/auth/csrf`, `POST /api/v1/auth/register`, `POST /api/v1/auth/login` và `GET /api/v1/auth/me`.
+- `GET /api/v1/auth/me` trả hồ sơ cá nhân; `PUT /api/v1/auth/me` cập nhật họ tên, số điện thoại, ngày sinh, giới tính và địa chỉ.
+- `POST /api/v1/auth/change-password` xác minh mật khẩu hiện tại, BCrypt mật khẩu mới và từ chối mật khẩu cũ/sai hoặc không đổi.
 - Đăng ký tài khoản khách hàng với mật khẩu BCrypt, chuẩn hóa email và tạo hồ sơ `khach_hang`.
 - Cấp access JWT HS256 15 phút qua cookie HttpOnly; bật CSRF và phân quyền các API hiện có.
-- Thêm tài liệu API, cấu hình môi trường và test cho auth, JWT, CSRF, quyền truy cập.
+- Thêm tài liệu API, cấu hình môi trường và test cho auth, JWT, CSRF, quyền truy cập, cập nhật hồ sơ và đổi mật khẩu.
 - `./gradlew build` thành công; `env -u JWT_SECRET ./gradlew test --rerun-tasks` thành công.
 
 ## Đang dở
@@ -27,6 +29,8 @@
 ## Quyết định đã chốt và lưu ý
 
 - Phạm vi tạm thời chỉ gồm access JWT; chưa triển khai refresh token, logout hoặc OAuth2.
+- Email, vai trò và ảnh đại diện chỉ đọc trong hồ sơ; API hồ sơ không cho sửa các trường này.
+- Đổi mật khẩu không thu hồi access JWT đã cấp; token cũ còn hiệu lực tối đa 15 phút.
 - JWT lấy từ `JWT_SECRET` (tối thiểu 32 byte); HTTPS cần đặt `COOKIE_SECURE=true`.
 - Đăng ký chỉ tạo vai trò `KHACH_HANG`; không nhận vai trò từ client.
 - Repository hiện không có file migration Flyway; `ddl-auto` vẫn là `none`. Không chạy trực tiếp `schema.sql` vì có lệnh `DROP TABLE`.

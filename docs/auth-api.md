@@ -71,11 +71,47 @@ Response thành công có dạng:
 
 ### `GET /api/v1/auth/me`
 
-Yêu cầu access token hợp lệ trong cookie `access_token` hoặc header Bearer. Trả `id`, `email`, `hoTen`, `vaiTro`; access token hết hạn hoặc không có sẽ nhận `401`.
+Yêu cầu access token hợp lệ trong cookie `access_token` hoặc header Bearer. Trả thông tin cá nhân gồm `id`, `email`, `hoTen`, `soDienThoai`, `ngaySinh`, `gioiTinh`, `diaChi`, `anhDaiDien`, `vaiTro`; access token hết hạn hoặc không có sẽ nhận `401`.
+
+### `PUT /api/v1/auth/me`
+
+Cập nhật hồ sơ của tài khoản đang đăng nhập. Tất cả trường trong body đều được gửi theo dạng thay thế; các trường tùy chọn gửi `null` nếu muốn xoá giá trị. Email, vai trò và ảnh đại diện không được thay đổi qua API này.
+
+```json
+{
+  "hoTen": "Nguyễn Văn A",
+  "soDienThoai": "+84901234567",
+  "ngaySinh": "1995-04-20",
+  "gioiTinh": "Nam",
+  "diaChi": "Đà Nẵng"
+}
+```
+
+- Thành công: `200 OK`, trả hồ sơ đã cập nhật.
+- Không có hoặc token không hợp lệ: `401 UNAUTHORIZED`.
+- Request không hợp lệ: `400 VALIDATION_ERROR`.
+- Cần gửi cookie và header CSRF như các request `POST`.
+
+### `POST /api/v1/auth/change-password`
+
+Yêu cầu đăng nhập và CSRF token hợp lệ. Mật khẩu hiện tại phải đúng; mật khẩu mới dài 8–72 ký tự và tối đa 72 byte UTF-8 (giới hạn BCrypt).
+
+```json
+{
+  "currentPassword": "MatKhauCu123",
+  "newPassword": "MatKhauMoi456"
+}
+```
+
+- Thành công: `200 OK`, message `Đổi mật khẩu thành công`.
+- Mật khẩu hiện tại không đúng: `400 CURRENT_PASSWORD_INVALID`.
+- Mật khẩu mới trùng mật khẩu hiện tại: `400 PASSWORD_UNCHANGED`.
+- Access token hiện tại không bị thu hồi tức thì; do chưa có cơ chế revoke token, token đã phát hành còn hiệu lực tối đa đến hết thời hạn 15 phút.
 
 ## Giới hạn đã biết của phiên bản tạm
 
 - Chưa có refresh token, rotation, revoke, phát hiện reuse hoặc logout; access token hết hạn sau 15 phút thì cần đăng nhập lại.
+- Đổi mật khẩu không thu hồi access token đã phát hành; token cũ hết hạn theo TTL tối đa 15 phút.
 - CSRF vẫn bật. FE phải gọi endpoint CSRF và gửi header tương ứng cho các request thay đổi dữ liệu.
 - Báo cáo, thống kê, quản lý nhân viên, vé, tin tức và điểm đến ghi mới yêu cầu vai trò `ADMIN` hoặc `NHAN_VIEN`; tạo đặt chỗ yêu cầu đăng nhập. Tìm chuyến bay, thông tin công khai và đọc điểm đến là API công khai.
 - Tài khoản mẫu trong `data.sql` dùng hash SHA-1 cũ; không thể đăng nhập qua cơ chế BCrypt mới. Tạo tài khoản mới để kiểm thử.

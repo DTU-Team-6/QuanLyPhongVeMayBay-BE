@@ -1,8 +1,11 @@
 package com.team6.quanlyvemaybay.service;
 
 import com.team6.quanlyvemaybay.dto.auth.AuthUserResponse;
+import com.team6.quanlyvemaybay.dto.auth.ChangePasswordRequest;
 import com.team6.quanlyvemaybay.dto.auth.LoginRequest;
+import com.team6.quanlyvemaybay.dto.auth.PersonalInfoResponse;
 import com.team6.quanlyvemaybay.dto.auth.RegisterRequest;
+import com.team6.quanlyvemaybay.dto.auth.UpdatePersonalInfoRequest;
 import com.team6.quanlyvemaybay.entity.KhachHang;
 import com.team6.quanlyvemaybay.entity.NguoiDung;
 import com.team6.quanlyvemaybay.entity.enums.GioiTinh;
@@ -90,14 +93,47 @@ public class AuthService {
     }
 
     @Transactional(readOnly = true)
-    public AuthUserResponse currentUser(Long userId) {
+    public PersonalInfoResponse currentUser(Long userId) {
+        return toPersonalInfoResponse(findActiveUser(userId));
+    }
+
+    @Transactional
+    public PersonalInfoResponse updatePersonalInfo(Long userId, UpdatePersonalInfoRequest request) {
+        NguoiDung nguoiDung = findActiveUser(userId);
+        nguoiDung.setHoTen(request.hoTen().trim());
+        nguoiDung.setSoDienThoai(request.soDienThoai());
+        nguoiDung.setNgaySinh(request.ngaySinh());
+        nguoiDung.setGioiTinh(request.gioiTinh());
+        nguoiDung.setDiaChi(request.diaChi() != null ? request.diaChi().trim() : null);
+        return toPersonalInfoResponse(nguoiDungRepository.save(nguoiDung));
+    }
+
+    @Transactional
+    public void changePassword(Long userId, ChangePasswordRequest request) {
+        validateBcryptPasswordLength(request.currentPassword());
+        validateBcryptPasswordLength(request.newPassword());
+        NguoiDung nguoiDung = findActiveUser(userId);
+        String passwordHash = nguoiDung.getMatKhau();
+        if (passwordHash == null || !passwordEncoder.matches(request.currentPassword(), passwordHash)) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "CURRENT_PASSWORD_INVALID",
+                    "Mật khẩu hiện tại không đúng.");
+        }
+        if (passwordEncoder.matches(request.newPassword(), passwordHash)) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "PASSWORD_UNCHANGED",
+                    "Mật khẩu mới phải khác mật khẩu hiện tại.");
+        }
+        nguoiDung.setMatKhau(passwordEncoder.encode(request.newPassword()));
+        nguoiDungRepository.save(nguoiDung);
+    }
+
+    private NguoiDung findActiveUser(Long userId) {
         NguoiDung nguoiDung = nguoiDungRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("USER_NOT_FOUND", "Không tìm thấy người dùng."));
         if (nguoiDung.getTrangThai() == null || nguoiDung.getTrangThai() != 1) {
             throw new BusinessException(HttpStatus.FORBIDDEN, "ACCOUNT_INACTIVE",
                     "Tài khoản đã bị khóa hoặc chưa được kích hoạt.");
         }
-        return toResponse(nguoiDung);
+        return nguoiDung;
     }
 
     private String normalizeEmail(String email) {
@@ -126,6 +162,20 @@ public class AuthService {
                 nguoiDung.getId(),
                 nguoiDung.getTaiKhoanEmail(),
                 nguoiDung.getHoTen(),
+                nguoiDung.getVaiTro()
+        );
+    }
+
+    private PersonalInfoResponse toPersonalInfoResponse(NguoiDung nguoiDung) {
+        return new PersonalInfoResponse(
+                nguoiDung.getId(),
+                nguoiDung.getTaiKhoanEmail(),
+                nguoiDung.getHoTen(),
+                nguoiDung.getSoDienThoai(),
+                nguoiDung.getNgaySinh(),
+                nguoiDung.getGioiTinh(),
+                nguoiDung.getDiaChi(),
+                nguoiDung.getAnhDaiDien(),
                 nguoiDung.getVaiTro()
         );
     }

@@ -1,7 +1,9 @@
 package com.team6.quanlyvemaybay.service;
 
+import com.team6.quanlyvemaybay.dto.auth.ChangePasswordRequest;
 import com.team6.quanlyvemaybay.dto.auth.LoginRequest;
 import com.team6.quanlyvemaybay.dto.auth.RegisterRequest;
+import com.team6.quanlyvemaybay.dto.auth.UpdatePersonalInfoRequest;
 import com.team6.quanlyvemaybay.entity.NguoiDung;
 import com.team6.quanlyvemaybay.entity.enums.GioiTinh;
 import com.team6.quanlyvemaybay.entity.enums.VaiTro;
@@ -156,6 +158,79 @@ class AuthServiceTest {
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.getStatus());
         assertEquals("INVALID_CREDENTIALS", exception.getCode());
+    }
+
+    @Test
+    void updatePersonalInfoChangesOnlyEditableProfileFields() {
+        NguoiDung user = activeUser();
+        when(nguoiDungRepository.findById(42L)).thenReturn(Optional.of(user));
+        when(nguoiDungRepository.save(user)).thenReturn(user);
+
+        var result = authService.updatePersonalInfo(42L, new UpdatePersonalInfoRequest(
+                "  Nguyễn Văn B  ",
+                "+84901234567",
+                java.time.LocalDate.of(1995, 4, 20),
+                GioiTinh.Nam,
+                "  Đà Nẵng  "
+        ));
+
+        assertEquals("Nguyễn Văn B", result.hoTen());
+        assertEquals("user@example.com", result.email());
+        assertEquals("+84901234567", result.soDienThoai());
+        assertEquals("Đà Nẵng", result.diaChi());
+        assertEquals(VaiTro.KHACH_HANG, result.vaiTro());
+        assertEquals("bcrypt-hash", user.getMatKhau());
+        verify(nguoiDungRepository).save(user);
+    }
+
+    @Test
+    void changePasswordVerifiesCurrentPasswordAndStoresNewHash() {
+        NguoiDung user = activeUser();
+        when(nguoiDungRepository.findById(42L)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("old-password", "bcrypt-hash")).thenReturn(true);
+        when(passwordEncoder.matches("new-password", "bcrypt-hash")).thenReturn(false);
+        when(passwordEncoder.encode("new-password")).thenReturn("new-bcrypt-hash");
+
+        authService.changePassword(42L, new ChangePasswordRequest("old-password", "new-password"));
+
+        assertEquals("new-bcrypt-hash", user.getMatKhau());
+        verify(nguoiDungRepository).save(user);
+    }
+
+    @Test
+    void changePasswordRejectsIncorrectCurrentPassword() {
+        NguoiDung user = activeUser();
+        when(nguoiDungRepository.findById(42L)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("wrong-password", "bcrypt-hash")).thenReturn(false);
+
+        BusinessException exception = assertThrows(
+                BusinessException.class,
+                () -> authService.changePassword(
+                        42L,
+                        new ChangePasswordRequest("wrong-password", "new-password")
+                )
+        );
+
+        assertEquals("CURRENT_PASSWORD_INVALID", exception.getCode());
+        verify(nguoiDungRepository, never()).save(any());
+    }
+
+    @Test
+    void changePasswordRejectsSamePassword() {
+        NguoiDung user = activeUser();
+        when(nguoiDungRepository.findById(42L)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("old-password", "bcrypt-hash")).thenReturn(true);
+
+        BusinessException exception = assertThrows(
+                BusinessException.class,
+                () -> authService.changePassword(
+                        42L,
+                        new ChangePasswordRequest("old-password", "old-password")
+                )
+        );
+
+        assertEquals("PASSWORD_UNCHANGED", exception.getCode());
+        verify(nguoiDungRepository, never()).save(any());
     }
 
     private NguoiDung activeUser() {

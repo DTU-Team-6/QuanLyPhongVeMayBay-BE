@@ -1,6 +1,8 @@
 package com.team6.quanlyvemaybay.controller;
 
 import com.team6.quanlyvemaybay.dto.auth.AuthUserResponse;
+import com.team6.quanlyvemaybay.dto.auth.PersonalInfoResponse;
+import com.team6.quanlyvemaybay.entity.enums.GioiTinh;
 import com.team6.quanlyvemaybay.entity.enums.VaiTro;
 import com.team6.quanlyvemaybay.exception.GlobalExceptionHandler;
 import com.team6.quanlyvemaybay.service.AuthService;
@@ -14,8 +16,10 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -98,5 +102,79 @@ class AuthSecurityTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+    }
+
+    @Test
+    void changePasswordRequiresAuthenticationAndCsrf() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/change-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"currentPassword":"old-password","newPassword":"new-password"}
+                                """))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+    }
+
+    @Test
+    void authenticatedUserCanUpdateOwnProfileWithCsrf() throws Exception {
+        when(jwtDecoder.decode("customer-token")).thenReturn(Jwt.withTokenValue("customer-token")
+                .header("alg", "HS256")
+                .subject("42")
+                .claim("role", VaiTro.KHACH_HANG.name())
+                .build());
+        when(authService.updatePersonalInfo(anyLong(), any())).thenReturn(
+                new PersonalInfoResponse(
+                        42L, "user@example.com", "Nguyễn Văn B", "+84901234567",
+                        null, GioiTinh.Khac,
+                        "Đà Nẵng", null, VaiTro.KHACH_HANG
+                )
+        );
+
+        mockMvc.perform(MockMvcRequestBuilders.put("/api/v1/auth/me")
+                        .cookie(new Cookie("access_token", "customer-token"))
+                        .cookie(new Cookie("XSRF-TOKEN", "csrf-value"))
+                        .header("X-XSRF-TOKEN", "csrf-value")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"hoTen":"Nguyễn Văn B","soDienThoai":"+84901234567",
+                                 "ngaySinh":null,"gioiTinh":"Khac","diaChi":"Đà Nẵng"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.hoTen").value("Nguyễn Văn B"))
+                .andExpect(jsonPath("$.data.email").value("user@example.com"));
+    }
+
+    @Test
+    void updatePersonalInfoRequiresAuthenticationEvenWithCsrf() throws Exception {
+        mockMvc.perform(MockMvcRequestBuilders.put("/api/v1/auth/me")
+                        .cookie(new Cookie("XSRF-TOKEN", "csrf-value"))
+                        .header("X-XSRF-TOKEN", "csrf-value")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"hoTen":"Nguyễn Văn B","soDienThoai":null,
+                                 "ngaySinh":null,"gioiTinh":"Khac","diaChi":null}
+                                """))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+    }
+
+    @Test
+    void authenticatedUserCanChangePasswordWithCsrf() throws Exception {
+        when(jwtDecoder.decode("customer-token")).thenReturn(Jwt.withTokenValue("customer-token")
+                .header("alg", "HS256")
+                .subject("42")
+                .claim("role", VaiTro.KHACH_HANG.name())
+                .build());
+
+        mockMvc.perform(post("/api/v1/auth/change-password")
+                        .cookie(new Cookie("access_token", "customer-token"))
+                        .cookie(new Cookie("XSRF-TOKEN", "csrf-value"))
+                        .header("X-XSRF-TOKEN", "csrf-value")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"currentPassword":"old-password","newPassword":"new-password"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Đổi mật khẩu thành công"));
     }
 }

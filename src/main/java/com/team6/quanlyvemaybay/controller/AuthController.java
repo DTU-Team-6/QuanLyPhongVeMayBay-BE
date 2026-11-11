@@ -1,8 +1,11 @@
 package com.team6.quanlyvemaybay.controller;
 
 import com.team6.quanlyvemaybay.dto.auth.AuthUserResponse;
+import com.team6.quanlyvemaybay.dto.auth.ChangePasswordRequest;
 import com.team6.quanlyvemaybay.dto.auth.LoginRequest;
+import com.team6.quanlyvemaybay.dto.auth.PersonalInfoResponse;
 import com.team6.quanlyvemaybay.dto.auth.RegisterRequest;
+import com.team6.quanlyvemaybay.dto.auth.UpdatePersonalInfoRequest;
 import com.team6.quanlyvemaybay.dto.common.ApiResponse;
 import com.team6.quanlyvemaybay.service.AuthService;
 import com.team6.quanlyvemaybay.service.JwtTokenService;
@@ -17,6 +20,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -69,9 +73,30 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<ApiResponse<AuthUserResponse>> me(@AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<ApiResponse<PersonalInfoResponse>> me(@AuthenticationPrincipal Jwt jwt) {
         Long userId = Long.valueOf(jwt.getSubject());
-        AuthUserResponse user = authService.currentUser(userId);
+        PersonalInfoResponse user = authService.currentUser(userId);
         return ResponseEntity.ok(ApiResponse.ok(user, "Lấy thông tin người dùng thành công"));
+    }
+
+    @PutMapping("/me")
+    public ResponseEntity<ApiResponse<PersonalInfoResponse>> updatePersonalInfo(
+            @AuthenticationPrincipal Jwt jwt,
+            @Valid @RequestBody UpdatePersonalInfoRequest request
+    ) {
+        PersonalInfoResponse user = authService.updatePersonalInfo(
+                Long.valueOf(jwt.getSubject()),
+                request
+        );
+        return ResponseEntity.ok(ApiResponse.ok(user, "Cập nhật thông tin cá nhân thành công"));
+    }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<ApiResponse<Void>> changePassword(
+            @AuthenticationPrincipal Jwt jwt,
+            @Valid @RequestBody ChangePasswordRequest request
+    ) {
+        authService.changePassword(Long.valueOf(jwt.getSubject()), request);
+        return ResponseEntity.ok(ApiResponse.ok(null, "Đổi mật khẩu thành công"));
     }
 }
