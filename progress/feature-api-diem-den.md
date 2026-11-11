@@ -8,16 +8,16 @@
 
 ## Đã xong (đã commit)
 
-- Bước 1: Tạo `DiemDen` entity và `DiemDenRepository` (`findWithFilters` phân trang, `existsDuplicateInAirport`) — `QuanlyvemaybayApplicationTests` PASS
+- `b0156a0`: Bước 1 - `DiemDen` entity và `DiemDenRepository`
+- Bước 2: `CreateDestinationRequest`, `DestinationResponse`, `DiemDenService`, `DiemDenController` — `./gradlew build -x test` PASS
 
 ## Đang dở (chưa commit hoặc chưa chạy được)
 
-- Bước 2: DTOs (`CreateDestinationRequest`, `DestinationResponse`), `DiemDenService`, `DiemDenController`
+- Bước 3: Viết `DiemDenServiceTest` & `DiemDenControllerTest`
 
 ## Việc tiếp theo (theo thứ tự)
 
-1. Bước 2: DTOs, `DiemDenService`, `DiemDenController` -> `./gradlew build -x test` -> commit
-2. Bước 3: `DiemDenServiceTest`, `DiemDenControllerTest` -> `./gradlew clean build` -> commit -> xoá file tiến độ và push nhánh
+1. Bước 3: `DiemDenServiceTest`, `DiemDenControllerTest` -> `./gradlew clean build` -> commit -> xoá file tiến độ và push nhánh mở PR vào `develop`
 
 ## Quyết định đã chốt và lưu ý
 
