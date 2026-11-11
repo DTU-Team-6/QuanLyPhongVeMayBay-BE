@@ -18,6 +18,8 @@ import java.util.List;
  */
 public interface VeMayBayRepository extends JpaRepository<VeMayBay, Long> {
 
+    List<VeMayBay> findByDatChoId(Long datChoId);
+
     @Query("""
             SELECT hhk.maHang AS maHang,
                    hhk.tenHang AS tenHang,

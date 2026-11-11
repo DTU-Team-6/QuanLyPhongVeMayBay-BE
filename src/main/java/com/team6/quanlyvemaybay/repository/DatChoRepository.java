@@ -16,6 +16,22 @@ import java.util.List;
  */
 public interface DatChoRepository extends JpaRepository<DatCho, Long> {
 
+    java.util.Optional<DatCho> findByMaDatCho(String maDatCho);
+
+    @Query("""
+            SELECT dc FROM DatCho dc
+            WHERE (:tuNgay IS NULL OR dc.ngayDat >= :tuNgay)
+              AND (:denNgay IS NULL OR dc.ngayDat < :denNgay)
+              AND (:trangThai IS NULL OR dc.trangThai = :trangThai)
+            ORDER BY dc.ngayDat DESC
+            """)
+    org.springframework.data.domain.Page<DatCho> findHistory(
+            @Param("tuNgay") LocalDateTime tuNgay,
+            @Param("denNgay") LocalDateTime denNgay,
+            @Param("trangThai") TrangThaiDatCho trangThai,
+            org.springframework.data.domain.Pageable pageable
+    );
+
     @Query("""
             SELECT nv.nguoiDungId AS nhanVienId,
                    COALESCE(nv.maNhanVien, 'ONLINE') AS maNhanVien,
