@@ -1,8 +1,10 @@
 package com.team6.quanlyvemaybay.service;
 
 import com.team6.quanlyvemaybay.dto.common.PageResponse;
+import com.team6.quanlyvemaybay.dto.khachhang.CapNhatKhachHangRequest;
 import com.team6.quanlyvemaybay.dto.khachhang.KhachHangResponse;
 import com.team6.quanlyvemaybay.dto.khachhang.TaoKhachHangRequest;
+import com.team6.quanlyvemaybay.dto.khachhang.XoaKhachHangResponse;
 import com.team6.quanlyvemaybay.entity.KhachHang;
 import com.team6.quanlyvemaybay.entity.NguoiDung;
 import com.team6.quanlyvemaybay.entity.enums.GioiTinh;
@@ -152,6 +154,95 @@ class KhachHangServiceTest {
         assertThatThrownBy(() -> khachHangService.themMoi(taoRequest(password)))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("Mật khẩu không được vượt quá 72 byte khi mã hóa.");
+    }
+
+    @Test
+    void capNhatThayTheThongTinLienHeVaHoSo() {
+        KhachHang khachHang = taoKhachHang(7L, (byte) 1);
+        when(khachHangRepository.findWithNguoiDungByNguoiDungId(7L)).thenReturn(Optional.of(khachHang));
+        when(nguoiDungRepository.existsByTaiKhoanEmailIgnoreCaseAndIdNot("moi@example.com", 7L))
+                .thenReturn(false);
+        when(khachHangRepository.save(any(KhachHang.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(nguoiDungRepository.saveAndFlush(any(NguoiDung.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        KhachHangResponse result = khachHangService.capNhat(7L, new CapNhatKhachHangRequest(
+                " Moi@Example.com ",
+                "Nguyễn Văn B",
+                "+84901112233",
+                LocalDate.of(1990, 1, 2),
+                GioiTinh.Nam,
+                "Hà Nội",
+                "CCCD123",
+                "Việt Nam",
+                "Silver",
+                250
+        ));
+
+        assertThat(result.email()).isEqualTo("moi@example.com");
+        assertThat(result.hoTen()).isEqualTo("Nguyễn Văn B");
+        assertThat(result.cmndPassport()).isEqualTo("CCCD123");
+        assertThat(result.xepHang()).isEqualTo("Silver");
+        assertThat(result.diemTichLuy()).isEqualTo(250);
+    }
+
+    @Test
+    void capNhatEmailDaDuocTaiKhoanKhacSuDungThiTraConflict() {
+        when(khachHangRepository.findWithNguoiDungByNguoiDungId(7L))
+                .thenReturn(Optional.of(taoKhachHang(7L, (byte) 1)));
+        when(nguoiDungRepository.existsByTaiKhoanEmailIgnoreCaseAndIdNot("other@example.com", 7L))
+                .thenReturn(true);
+
+        assertThatThrownBy(() -> khachHangService.capNhat(7L, new CapNhatKhachHangRequest(
+                "other@example.com",
+                "Nguyễn Văn B",
+                null,
+                null,
+                GioiTinh.Khac,
+                null,
+                null,
+                "Việt Nam",
+                "Member",
+                0
+        )))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(exception -> assertThat(((BusinessException) exception).getCode())
+                        .isEqualTo("EMAIL_ALREADY_REGISTERED"));
+    }
+
+    @Test
+    void capNhatKhachHangDaNgungHoatDongThiTraConflict() {
+        when(khachHangRepository.findWithNguoiDungByNguoiDungId(7L))
+                .thenReturn(Optional.of(taoKhachHang(7L, (byte) 0)));
+
+        assertThatThrownBy(() -> khachHangService.capNhat(7L, null))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(exception -> assertThat(((BusinessException) exception).getCode())
+                        .isEqualTo("CUSTOMER_ALREADY_INACTIVE"));
+    }
+
+    @Test
+    void ngungHoatDongCapNhatTrangThaiMotLan() {
+        when(khachHangRepository.findWithNguoiDungByNguoiDungId(7L))
+                .thenReturn(Optional.of(taoKhachHang(7L, (byte) 1)));
+        when(nguoiDungRepository.ngungHoatDongNeuDangHoatDong(7L)).thenReturn(1);
+
+        XoaKhachHangResponse result = khachHangService.ngungHoatDong(7L);
+
+        assertThat(result.id()).isEqualTo(7L);
+        assertThat(result.trangThai()).isZero();
+    }
+
+    @Test
+    void ngungHoatDongChiTraConflictKhiYeuCauDongThoiDaCapNhat() {
+        when(khachHangRepository.findWithNguoiDungByNguoiDungId(7L))
+                .thenReturn(Optional.of(taoKhachHang(7L, (byte) 1)));
+        when(nguoiDungRepository.ngungHoatDongNeuDangHoatDong(7L)).thenReturn(0);
+
+        assertThatThrownBy(() -> khachHangService.ngungHoatDong(7L))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(exception -> assertThat(((BusinessException) exception).getCode())
+                        .isEqualTo("CUSTOMER_ALREADY_INACTIVE"));
     }
 
     private TaoKhachHangRequest taoRequest(String password) {

@@ -2,6 +2,7 @@ package com.team6.quanlyvemaybay.controller;
 
 import com.team6.quanlyvemaybay.config.SecurityConfig;
 import com.team6.quanlyvemaybay.dto.common.PageResponse;
+import com.team6.quanlyvemaybay.dto.khachhang.XoaKhachHangResponse;
 import com.team6.quanlyvemaybay.dto.khachhang.KhachHangResponse;
 import com.team6.quanlyvemaybay.entity.enums.GioiTinh;
 import com.team6.quanlyvemaybay.entity.enums.VaiTro;
@@ -22,9 +23,12 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -128,6 +132,43 @@ class KhachHangControllerTest {
                                 """))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+    }
+
+    @Test
+    void adminCoTheCapNhatHoSoKhachHangVoiCsrf() throws Exception {
+        when(jwtDecoder.decode("admin-token")).thenReturn(jwt("admin-token", VaiTro.ADMIN));
+        when(khachHangService.capNhat(eq(7L), any())).thenReturn(taoResponse());
+
+        mockMvc.perform(put("/api/v1/khach-hang/7")
+                        .cookie(new Cookie("access_token", "admin-token"))
+                        .cookie(new Cookie("XSRF-TOKEN", "csrf-value"))
+                        .header("X-XSRF-TOKEN", "csrf-value")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email":"khach@example.com",
+                                  "hoTen":"Nguyễn Văn A",
+                                  "gioiTinh":"Nam",
+                                  "quocTich":"Việt Nam",
+                                  "xepHang":"Member",
+                                  "diemTichLuy":10
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.xepHang").value("Member"));
+    }
+
+    @Test
+    void nhanVienCoTheNgungHoatDongKhachHangVoiCsrf() throws Exception {
+        when(jwtDecoder.decode("staff-token")).thenReturn(jwt("staff-token", VaiTro.NHAN_VIEN));
+        when(khachHangService.ngungHoatDong(7L)).thenReturn(new XoaKhachHangResponse(7L, (byte) 0));
+
+        mockMvc.perform(delete("/api/v1/khach-hang/7")
+                        .cookie(new Cookie("access_token", "staff-token"))
+                        .cookie(new Cookie("XSRF-TOKEN", "csrf-value"))
+                        .header("X-XSRF-TOKEN", "csrf-value"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.trangThai").value(0));
     }
 
     @Test

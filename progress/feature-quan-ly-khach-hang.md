@@ -10,6 +10,9 @@
 - API GET chi tiết khách hàng; test service/controller thành công.
 - API POST tạo khách hàng, mật khẩu tùy chọn và BCrypt khi có.
 - Sửa CSRF để token trong cookie không làm request bỏ qua kiểm tra CSRF.
+- API PUT cập nhật hồ sơ và DELETE ngừng hoạt động mềm; test service/controller mục tiêu thành công.
+- Tài liệu API khách hàng và phân quyền đã được cập nhật.
+- `./gradlew build` thành công.
 
 ## Đang dở (chưa commit hoặc chưa chạy được)
 
@@ -17,9 +20,7 @@
 
 ## Việc tiếp theo (theo thứ tự)
 
-1. Thêm API sửa hồ sơ khách hàng.
-2. Thêm API ngừng hoạt động mềm.
-3. Hoàn thiện tài liệu, chạy build và kiểm tra nhánh.
+1. Trước khi mở PR, xóa file tiến độ này theo quy trình dự án.
 
 ## Quyết định đã chốt và lưu ý
 

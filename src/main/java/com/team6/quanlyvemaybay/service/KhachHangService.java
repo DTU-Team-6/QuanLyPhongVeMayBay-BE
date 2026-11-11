@@ -1,8 +1,10 @@
 package com.team6.quanlyvemaybay.service;
 
 import com.team6.quanlyvemaybay.dto.common.PageResponse;
+import com.team6.quanlyvemaybay.dto.khachhang.CapNhatKhachHangRequest;
 import com.team6.quanlyvemaybay.dto.khachhang.KhachHangResponse;
 import com.team6.quanlyvemaybay.dto.khachhang.TaoKhachHangRequest;
+import com.team6.quanlyvemaybay.dto.khachhang.XoaKhachHangResponse;
 import com.team6.quanlyvemaybay.entity.KhachHang;
 import com.team6.quanlyvemaybay.entity.NguoiDung;
 import com.team6.quanlyvemaybay.entity.enums.GioiTinh;
@@ -82,6 +84,43 @@ public class KhachHangService {
         return toResponse(khachHangRepository.save(khachHang));
     }
 
+    @Transactional
+    public KhachHangResponse capNhat(Long id, CapNhatKhachHangRequest request) {
+        KhachHang khachHang = timKhachHangDangHoatDong(id);
+        NguoiDung nguoiDung = khachHang.getNguoiDung();
+        String email = request.email().strip().toLowerCase(Locale.ROOT);
+        if (nguoiDungRepository.existsByTaiKhoanEmailIgnoreCaseAndIdNot(email, id)) {
+            throw emailDaTonTai();
+        }
+
+        nguoiDung.setTaiKhoanEmail(email);
+        nguoiDung.setHoTen(request.hoTen().trim());
+        nguoiDung.setSoDienThoai(normalizeOptionalText(request.soDienThoai()));
+        nguoiDung.setNgaySinh(request.ngaySinh());
+        nguoiDung.setGioiTinh(request.gioiTinh());
+        nguoiDung.setDiaChi(normalizeOptionalText(request.diaChi()));
+        khachHang.setCmndPassport(normalizeOptionalText(request.cmndPassport()));
+        khachHang.setQuocTich(request.quocTich().trim());
+        khachHang.setXepHang(request.xepHang());
+        khachHang.setDiemTichLuy(request.diemTichLuy());
+
+        try {
+            nguoiDungRepository.saveAndFlush(nguoiDung);
+        } catch (DataIntegrityViolationException ex) {
+            throw emailDaTonTai();
+        }
+        return toResponse(khachHangRepository.save(khachHang));
+    }
+
+    @Transactional
+    public XoaKhachHangResponse ngungHoatDong(Long id) {
+        timKhachHangDangHoatDong(id);
+        if (nguoiDungRepository.ngungHoatDongNeuDangHoatDong(id) != 1) {
+            throw khachHangDaNgungHoatDong();
+        }
+        return new XoaKhachHangResponse(id, (byte) 0);
+    }
+
     @Transactional(readOnly = true)
     public KhachHangResponse layChiTiet(Long id) {
         KhachHang khachHang = khachHangRepository.findWithNguoiDungByNguoiDungId(id)
@@ -110,6 +149,19 @@ public class KhachHangService {
         );
     }
 
+    private KhachHang timKhachHangDangHoatDong(Long id) {
+        KhachHang khachHang = khachHangRepository.findWithNguoiDungByNguoiDungId(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "CUSTOMER_NOT_FOUND",
+                        "Không tìm thấy khách hàng."
+                ));
+        if (khachHang.getNguoiDung().getTrangThai() == null
+                || khachHang.getNguoiDung().getTrangThai() != 1) {
+            throw khachHangDaNgungHoatDong();
+        }
+        return khachHang;
+    }
+
     private String normalizeOptionalText(String value) {
         return value == null || value.isBlank() ? null : value.trim();
     }
@@ -132,5 +184,10 @@ public class KhachHangService {
     private BusinessException emailDaTonTai() {
         return new BusinessException(HttpStatus.CONFLICT, "EMAIL_ALREADY_REGISTERED",
                 "Email đã được đăng ký.");
+    }
+
+    private BusinessException khachHangDaNgungHoatDong() {
+        return new BusinessException(HttpStatus.CONFLICT, "CUSTOMER_ALREADY_INACTIVE",
+                "Khách hàng đã ngừng hoạt động.");
     }
 }
