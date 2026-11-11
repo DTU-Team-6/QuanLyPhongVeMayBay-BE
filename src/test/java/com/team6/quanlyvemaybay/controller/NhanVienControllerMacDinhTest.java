@@ -1,0 +1,21 @@
+package com.team6.quanlyvemaybay.controller;
+
+import com.team6.quanlyvemaybay.service.NhanVienService;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@WebMvcTest(controllers = NhanVienController.class)
+class NhanVienControllerMacDinhTest {
+    @Autowired MockMvc mvc;
+    @MockitoBean NhanVienService service;
+
+    @Test
+    void endpointMacDinhKhongDuocBat() throws Exception {
+        mvc.perform(get("/api/v1/nhan-vien")).andExpect(status().isNotFound());
+    }
+}
