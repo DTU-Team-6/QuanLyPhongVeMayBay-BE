@@ -5,6 +5,11 @@ import com.team6.quanlyvemaybay.dto.flight.AirlineSummaryDto;
 import com.team6.quanlyvemaybay.dto.flight.AirportSummaryDto;
 import com.team6.quanlyvemaybay.dto.flight.FlightTimeDto;
 import com.team6.quanlyvemaybay.dto.flight.TopCheapFlightResponse;
+import com.team6.quanlyvemaybay.dto.flight.FlightSearchResponse;
+import com.team6.quanlyvemaybay.dto.flight.FlightDetailResponse;
+import com.team6.quanlyvemaybay.exception.BusinessException;
+import com.team6.quanlyvemaybay.exception.ResourceNotFoundException;
+import org.springframework.http.HttpStatus;
 import com.team6.quanlyvemaybay.entity.ChuyenBay;
 import com.team6.quanlyvemaybay.entity.HangHangKhong;
 import com.team6.quanlyvemaybay.entity.HangVeChuyenBay;
@@ -35,6 +40,47 @@ import java.util.Set;
 @Service
 @Transactional(readOnly = true)
 public class ChuyenBayService {
+
+    public List<FlightSearchResponse> search(String maDi, String maDen, java.time.LocalDate ngayDi,
+                                              int soNguoiLon, int soTreEm, String maHang) {
+        if (maDi.equalsIgnoreCase(maDen)) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "INVALID_ROUTE", "Sân bay đi và đến phải khác nhau");
+        }
+        if (ngayDi.isBefore(java.time.LocalDate.now(clock))) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "INVALID_DATE", "Ngày bay không được ở quá khứ");
+        }
+        int soCho = soNguoiLon + soTreEm;
+        if (soCho > 9) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "PASSENGER_LIMIT_EXCEEDED", "Tổng số hành khách tìm kiếm không được vượt quá 9 người");
+        }
+        return hangVeChuyenBayRepository.findForSearch(maDi.toUpperCase(Locale.ROOT), maDen.toUpperCase(Locale.ROOT),
+                        ngayDi.atStartOfDay(), ngayDi.plusDays(1).atStartOfDay(),
+                        TrangThaiChuyenBay.DUNG_GIO, TrangThaiHang.HOAT_DONG, soCho,
+                        maHang == null ? null : maHang.toUpperCase(Locale.ROOT))
+                .stream().filter(hv -> hv.getChuyenBay().getThoiGianKhoiHanh().isAfter(LocalDateTime.now(clock)))
+                .map(this::toSearchResponse).toList();
+    }
+
+    public FlightDetailResponse detail(Long id) {
+        List<HangVeChuyenBay> fares = hangVeChuyenBayRepository.findByFlightIdWithDetails(id);
+        if (fares.isEmpty()) throw new ResourceNotFoundException("FLIGHT_NOT_FOUND", "Không tìm thấy chuyến bay");
+        return new FlightDetailResponse(id, fares.stream().map(this::toSearchResponse).toList());
+    }
+
+    private FlightSearchResponse toSearchResponse(HangVeChuyenBay hv) {
+        ChuyenBay cb = hv.getChuyenBay();
+        SanBay di = cb.getSanBayDi();
+        SanBay den = cb.getSanBayDen();
+        // Schema hiện tại lưu giờ địa phương không kèm ZoneId; các chuyến nội địa dùng Asia/Ho_Chi_Minh.
+        ZonedDateTime khoiHanh = cb.getThoiGianKhoiHanh().atZone(TimeConfig.DEFAULT_VN_ZONE);
+        ZonedDateTime haCanh = cb.getThoiGianHaCanh().atZone(TimeConfig.DEFAULT_VN_ZONE);
+        return new FlightSearchResponse(cb.getId(), hv.getId(), cb.getMaChuyenBay(),
+                new AirlineSummaryDto(cb.getHangHangKhong().getMaHang(), cb.getHangHangKhong().getTenHang(), cb.getHangHangKhong().getLogoUrl()),
+                toAirportSummary(di), toAirportSummary(den), toFlightTimeDto(khoiHanh), toFlightTimeDto(haCanh),
+                Duration.between(khoiHanh, haCanh).toMinutes(), hv.getLoaiKhoang(), hv.getGiaBan(), hv.getThuePhi(),
+                hv.getGiaBan().add(hv.getThuePhi()), DEFAULT_CURRENCY, hv.getSoGheTrong(),
+                hv.getHanhLyXachTayKg(), hv.getHanhLyKyGuiKg());
+    }
 
     private static final String DEFAULT_CURRENCY = "VND";
     private static final Map<String, ZoneId> AIRPORT_TIMEZONES = Map.ofEntries(
