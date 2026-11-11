@@ -2,11 +2,15 @@ package com.team6.quanlyvemaybay.service;
 
 import com.team6.quanlyvemaybay.dto.common.PageResponse;
 import com.team6.quanlyvemaybay.dto.khachhang.KhachHangResponse;
+import com.team6.quanlyvemaybay.dto.khachhang.TaoKhachHangRequest;
 import com.team6.quanlyvemaybay.entity.KhachHang;
 import com.team6.quanlyvemaybay.entity.NguoiDung;
 import com.team6.quanlyvemaybay.entity.enums.GioiTinh;
+import com.team6.quanlyvemaybay.entity.enums.VaiTro;
+import com.team6.quanlyvemaybay.exception.BusinessException;
 import com.team6.quanlyvemaybay.exception.ResourceNotFoundException;
 import com.team6.quanlyvemaybay.repository.KhachHangRepository;
+import com.team6.quanlyvemaybay.repository.NguoiDungRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,13 +19,16 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -31,11 +38,17 @@ class KhachHangServiceTest {
     @Mock
     private KhachHangRepository khachHangRepository;
 
+    @Mock
+    private NguoiDungRepository nguoiDungRepository;
+
+    @Mock
+    private PasswordEncoder passwordEncoder;
+
     private KhachHangService khachHangService;
 
     @BeforeEach
     void setUp() {
-        khachHangService = new KhachHangService(khachHangRepository);
+        khachHangService = new KhachHangService(khachHangRepository, nguoiDungRepository, passwordEncoder);
     }
 
     @Test
@@ -74,6 +87,87 @@ class KhachHangServiceTest {
         assertThatThrownBy(() -> khachHangService.layChiTiet(99L))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("Không tìm thấy khách hàng.");
+    }
+
+    @Test
+    void themMoiKhongMatKhauDungGiaTriMacDinhChoKhachVangLai() {
+        when(nguoiDungRepository.existsByTaiKhoanEmailIgnoreCase("khach@example.com")).thenReturn(false);
+        when(nguoiDungRepository.saveAndFlush(any(NguoiDung.class))).thenAnswer(invocation -> {
+            NguoiDung nguoiDung = invocation.getArgument(0);
+            nguoiDung.setId(8L);
+            return nguoiDung;
+        });
+        when(khachHangRepository.save(any(KhachHang.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        KhachHangResponse result = khachHangService.themMoi(taoRequest(null));
+
+        var nguoiDungCaptor = org.mockito.ArgumentCaptor.forClass(NguoiDung.class);
+        verify(nguoiDungRepository).saveAndFlush(nguoiDungCaptor.capture());
+        assertThat(nguoiDungCaptor.getValue().getVaiTro()).isEqualTo(VaiTro.KHACH_HANG);
+        assertThat(nguoiDungCaptor.getValue().getMatKhau()).isNull();
+        assertThat(nguoiDungCaptor.getValue().getTaiKhoanEmail()).isEqualTo("khach@example.com");
+        assertThat(result.id()).isEqualTo(8L);
+        assertThat(result.gioiTinh()).isEqualTo(GioiTinh.Khac);
+        assertThat(result.quocTich()).isEqualTo("Việt Nam");
+        assertThat(result.xepHang()).isEqualTo("Member");
+        assertThat(result.diemTichLuy()).isZero();
+    }
+
+    @Test
+    void themMoiBamMatKhauNeuDuocCungCap() {
+        when(nguoiDungRepository.existsByTaiKhoanEmailIgnoreCase("khach@example.com")).thenReturn(false);
+        when(passwordEncoder.encode("MatKhau123")).thenReturn("$2a$12$hash");
+        when(nguoiDungRepository.saveAndFlush(any(NguoiDung.class))).thenAnswer(invocation -> {
+            NguoiDung nguoiDung = invocation.getArgument(0);
+            nguoiDung.setId(8L);
+            return nguoiDung;
+        });
+        when(khachHangRepository.save(any(KhachHang.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        khachHangService.themMoi(taoRequest("MatKhau123"));
+
+        var nguoiDungCaptor = org.mockito.ArgumentCaptor.forClass(NguoiDung.class);
+        verify(nguoiDungRepository).saveAndFlush(nguoiDungCaptor.capture());
+        assertThat(nguoiDungCaptor.getValue().getMatKhau()).isEqualTo("$2a$12$hash");
+        verify(passwordEncoder).encode("MatKhau123");
+    }
+
+    @Test
+    void themMoiEmailDaTonTaiThiTraConflict() {
+        when(nguoiDungRepository.existsByTaiKhoanEmailIgnoreCase("khach@example.com")).thenReturn(true);
+
+        assertThatThrownBy(() -> khachHangService.themMoi(taoRequest(null)))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(exception -> {
+                    BusinessException businessException = (BusinessException) exception;
+                    assertThat(businessException.getCode()).isEqualTo("EMAIL_ALREADY_REGISTERED");
+                });
+    }
+
+    @Test
+    void themMoiTuChoiMatKhauVuotQuaGioiHanBcryptTheoByte() {
+        String password = "ế".repeat(25);
+        assertThat(password.getBytes(StandardCharsets.UTF_8)).hasSizeGreaterThan(72);
+
+        assertThatThrownBy(() -> khachHangService.themMoi(taoRequest(password)))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("Mật khẩu không được vượt quá 72 byte khi mã hóa.");
+    }
+
+    private TaoKhachHangRequest taoRequest(String password) {
+        return new TaoKhachHangRequest(
+                "  Khach@Example.com ",
+                password,
+                " Nguyễn Văn A ",
+                "+84901234567",
+                LocalDate.of(1995, 4, 20),
+                null,
+                " Đà Nẵng ",
+                "012345678901",
+                null,
+                null,
+                null
+        );
     }
 
     private KhachHang taoKhachHang(Long id, Byte trangThai) {

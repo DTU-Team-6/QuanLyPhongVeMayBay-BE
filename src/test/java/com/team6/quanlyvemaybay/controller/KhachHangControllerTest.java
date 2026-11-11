@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -20,8 +21,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDate;
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -88,6 +91,43 @@ class KhachHangControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.id").value(7))
                 .andExpect(jsonPath("$.data.hoTen").value("Nguyễn Văn A"));
+    }
+
+    @Test
+    void nhanVienCoTheTaoKhachHangCoCsrf() throws Exception {
+        when(jwtDecoder.decode("staff-token")).thenReturn(jwt("staff-token", VaiTro.NHAN_VIEN));
+        when(khachHangService.themMoi(any())).thenReturn(taoResponse());
+
+        mockMvc.perform(post("/api/v1/khach-hang")
+                        .cookie(new Cookie("access_token", "staff-token"))
+                        .cookie(new Cookie("XSRF-TOKEN", "csrf-value"))
+                        .header("X-XSRF-TOKEN", "csrf-value")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email":"khach@example.com",
+                                  "hoTen":"Nguyễn Văn A",
+                                  "ngaySinh":"1995-04-20",
+                                  "gioiTinh":"Nam",
+                                  "quocTich":"Việt Nam"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.email").value("khach@example.com"));
+    }
+
+    @Test
+    void taoKhachHangThieuCsrfTra403() throws Exception {
+        when(jwtDecoder.decode("staff-token")).thenReturn(jwt("staff-token", VaiTro.NHAN_VIEN));
+
+        mockMvc.perform(post("/api/v1/khach-hang")
+                        .cookie(new Cookie("access_token", "staff-token"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"khach@example.com","hoTen":"Nguyễn Văn A"}
+                                """))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
     }
 
     @Test

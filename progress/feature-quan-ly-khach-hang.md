@@ -8,6 +8,8 @@
 
 - API GET danh sách khách hàng có phân trang, tìm kiếm và giới hạn quyền.
 - API GET chi tiết khách hàng; test service/controller thành công.
+- API POST tạo khách hàng, mật khẩu tùy chọn và BCrypt khi có.
+- Sửa CSRF để token trong cookie không làm request bỏ qua kiểm tra CSRF.
 
 ## Đang dở (chưa commit hoặc chưa chạy được)
 
@@ -15,10 +17,9 @@
 
 ## Việc tiếp theo (theo thứ tự)
 
-1. Thêm API tạo khách hàng với mật khẩu tùy chọn.
-2. Thêm API sửa hồ sơ khách hàng.
-3. Thêm API ngừng hoạt động mềm.
-4. Hoàn thiện tài liệu, chạy build và kiểm tra nhánh.
+1. Thêm API sửa hồ sơ khách hàng.
+2. Thêm API ngừng hoạt động mềm.
+3. Hoàn thiện tài liệu, chạy build và kiểm tra nhánh.
 
 ## Quyết định đã chốt và lưu ý
 

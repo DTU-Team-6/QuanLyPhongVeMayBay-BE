@@ -3,6 +3,8 @@ package com.team6.quanlyvemaybay.config;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,13 +20,16 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
 import org.springframework.security.oauth2.server.resource.web.DefaultBearerTokenResolver;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.filter.OncePerRequestFilter;
 import tools.jackson.databind.ObjectMapper;
 
+import java.io.IOException;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
@@ -73,7 +78,7 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(resourceServer -> resourceServer
-                        .bearerTokenResolver(cookieOrHeaderTokenResolver())
+                        .bearerTokenResolver(bearerTokenResolver())
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(token -> {
                             String role = token.getClaimAsString("role");
                             List<SimpleGrantedAuthority> authorities = role == null
@@ -82,6 +87,7 @@ public class SecurityConfig {
                             return new JwtAuthenticationToken(token, authorities);
                         }))
                 )
+                .addFilterBefore(new CookieAccessTokenFilter(), BearerTokenAuthenticationFilter.class)
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint((request, response, exception) ->
                                 writeProblem(objectMapper, request, response, 401,
@@ -99,24 +105,37 @@ public class SecurityConfig {
         return http.build();
     }
 
-    private BearerTokenResolver cookieOrHeaderTokenResolver() {
+    private BearerTokenResolver bearerTokenResolver() {
         DefaultBearerTokenResolver headerResolver = new DefaultBearerTokenResolver();
         return request -> {
             String headerToken = headerResolver.resolve(request);
             if (headerToken != null) {
                 return headerToken;
             }
-            Cookie[] cookies = request.getCookies();
-            if (cookies == null) {
-                return null;
-            }
-            return Arrays.stream(cookies)
-                    .filter(cookie -> "access_token".equals(cookie.getName()))
-                    .map(Cookie::getValue)
-                    .filter(value -> !value.isBlank())
-                    .findFirst()
-                    .orElse(null);
+            return (String) request.getAttribute(CookieAccessTokenFilter.COOKIE_TOKEN_ATTRIBUTE);
         };
+    }
+
+    private static class CookieAccessTokenFilter extends OncePerRequestFilter {
+        private static final String COOKIE_TOKEN_ATTRIBUTE = CookieAccessTokenFilter.class.getName() + ".token";
+
+        @Override
+        protected void doFilterInternal(
+                HttpServletRequest request,
+                HttpServletResponse response,
+                FilterChain filterChain
+        ) throws ServletException, IOException {
+            Cookie[] cookies = request.getCookies();
+            if (cookies != null) {
+                Arrays.stream(cookies)
+                        .filter(cookie -> "access_token".equals(cookie.getName()))
+                        .map(Cookie::getValue)
+                        .filter(value -> !value.isBlank())
+                        .findFirst()
+                        .ifPresent(value -> request.setAttribute(COOKIE_TOKEN_ATTRIBUTE, value));
+            }
+            filterChain.doFilter(request, response);
+        }
     }
 
     private void writeProblem(
