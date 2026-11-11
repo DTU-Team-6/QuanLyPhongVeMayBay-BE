@@ -6,6 +6,7 @@ import com.team6.quanlyvemaybay.entity.enums.TrangThaiHang;
 import com.team6.quanlyvemaybay.repository.projection.FlightOccupancyRow;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -16,6 +17,11 @@ import java.util.List;
  * Repository truy vấn hạng vé, giá bán và thống kê công suất ghế theo từng chuyến bay.
  */
 public interface HangVeChuyenBayRepository extends JpaRepository<HangVeChuyenBay, Long> {
+
+    @Modifying
+    @Query("UPDATE HangVeChuyenBay hv SET hv.soGheTrong = hv.soGheTrong - :soLuong "
+            + "WHERE hv.id = :id AND hv.soGheTrong >= :soLuong")
+    int reserveSeats(@Param("id") Long id, @Param("soLuong") int soLuong);
 
     @Query("""
             SELECT hv FROM HangVeChuyenBay hv
