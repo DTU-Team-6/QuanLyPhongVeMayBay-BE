@@ -1,6 +1,7 @@
 package com.team6.quanlyvemaybay.entity;
 
 import com.team6.quanlyvemaybay.entity.enums.GioiTinh;
+import com.team6.quanlyvemaybay.entity.enums.LoaiHanhKhach;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 
@@ -15,7 +16,10 @@ public class HanhKhach {
     private String email;
     @Column(name="so_dien_thoai") private String soDienThoai;
     @Column(name="cmnd_passport") private String cmndPassport;
-    @Column(name="loai_hanh_khach", nullable=false) private String loaiHanhKhach = "NGUOI_LON";
+    @Enumerated(EnumType.STRING)
+    @Column(name="loai_hanh_khach", nullable=false)
+    private LoaiHanhKhach loaiHanhKhach = LoaiHanhKhach.NGUOI_LON;
+
     public Long getId(){return id;} public void setId(Long v){id=v;}
     public Long getDatChoId(){return datChoId;} public void setDatChoId(Long v){datChoId=v;}
     public String getHoTen(){return hoTen;} public void setHoTen(String v){hoTen=v;}
@@ -24,5 +28,5 @@ public class HanhKhach {
     public String getEmail(){return email;} public void setEmail(String v){email=v;}
     public String getSoDienThoai(){return soDienThoai;} public void setSoDienThoai(String v){soDienThoai=v;}
     public String getCmndPassport(){return cmndPassport;} public void setCmndPassport(String v){cmndPassport=v;}
-    public String getLoaiHanhKhach(){return loaiHanhKhach;} public void setLoaiHanhKhach(String v){loaiHanhKhach=v;}
+    public LoaiHanhKhach getLoaiHanhKhach(){return loaiHanhKhach;} public void setLoaiHanhKhach(LoaiHanhKhach v){loaiHanhKhach=v;}
 }
