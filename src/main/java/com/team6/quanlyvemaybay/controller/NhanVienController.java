@@ -1,0 +1,28 @@
+package com.team6.quanlyvemaybay.controller;
+
+import com.team6.quanlyvemaybay.dto.common.ApiResponse;
+import com.team6.quanlyvemaybay.dto.nhanvien.XoaNhanVienResponse;
+import com.team6.quanlyvemaybay.service.NhanVienService;
+import jakarta.validation.constraints.Min;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+/** Chỉ bật trong môi trường kiểm thử biệt lập khi chưa có phân quyền ADMIN. */
+@RestController
+@RequestMapping("/api/v1/nhan-vien")
+@ConditionalOnProperty(name = "app.nhan-vien.allow-unsecured", havingValue = "true")
+public class NhanVienController {
+    private final NhanVienService service;
+
+    public NhanVienController(NhanVienService service) {
+        this.service = service;
+    }
+
+    @DeleteMapping("/{id}")
+    public ApiResponse<XoaNhanVienResponse> xoaNhanVien(@PathVariable @Min(1) Long id) {
+        return ApiResponse.ok(service.xoaNhanVien(id), "Ngừng hoạt động nhân viên thành công");
+    }
+}
