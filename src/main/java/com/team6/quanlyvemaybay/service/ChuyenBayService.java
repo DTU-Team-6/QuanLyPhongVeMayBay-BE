@@ -50,6 +50,9 @@ public class ChuyenBayService {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "INVALID_DATE", "Ngày bay không được ở quá khứ");
         }
         int soCho = soNguoiLon + soTreEm;
+        if (soCho > 9) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "PASSENGER_LIMIT_EXCEEDED", "Tổng số hành khách tìm kiếm không được vượt quá 9 người");
+        }
         return hangVeChuyenBayRepository.findForSearch(maDi.toUpperCase(Locale.ROOT), maDen.toUpperCase(Locale.ROOT),
                         ngayDi.atStartOfDay(), ngayDi.plusDays(1).atStartOfDay(),
                         TrangThaiChuyenBay.DUNG_GIO, TrangThaiHang.HOAT_DONG, soCho,
