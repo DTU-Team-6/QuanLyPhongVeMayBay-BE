@@ -59,3 +59,18 @@ app:
         url: "/dieu-khoan-su-dung"
       - title: "Chính sách bảo mật"
         url: "/chinh-sach-bao-mat"
+  payment:
+    vnpay:
+      tmn-code: ${VNPAY_TMN_CODE:DTUTEAM6}
+      hash-secret: ${VNPAY_HASH_SECRET:SECRETKEYVNPAYTEST1234567890ABCDEF}
+      pay-url: ${VNPAY_PAY_URL:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
+      return-url: ${VNPAY_RETURN_URL:http://localhost:8080/api/v1/thanh-toan/vnpay/callback}
+    paypal:
+      client-id: ${PAYPAL_CLIENT_ID:test-paypal-client-id}
+      client-secret: ${PAYPAL_CLIENT_SECRET:test-paypal-client-secret}
+      mode: ${PAYPAL_MODE:sandbox}
+      base-url: ${PAYPAL_BASE_URL:https://api-m.sandbox.paypal.com}
+      exchange-rate-usd: ${PAYPAL_EXCHANGE_RATE_USD:25400}
+      return-url: ${PAYPAL_RETURN_URL:http://localhost:8080/api/v1/thanh-toan/paypal/capture}
+      cancel-url: ${PAYPAL_CANCEL_URL:http://localhost:5173/thanh-toan/that-bai}
+
