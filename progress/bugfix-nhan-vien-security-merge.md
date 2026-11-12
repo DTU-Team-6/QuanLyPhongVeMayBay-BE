@@ -10,8 +10,8 @@
 
 - Bỏ điều kiện tắt mặc định của `NhanVienController`.
 - Giới hạn API quản lý nhân viên cho `ADMIN`.
-- Bổ sung kiểm tra CSRF cho yêu cầu ghi dùng cookie `access_token` vì Resource Server miễn CSRF cho bearer token.
-- Cập nhật test và tài liệu API. `build` chạy thành công qua ổ đĩa ánh xạ ASCII; 84 test, 0 lỗi.
+- Sau khi merge `origin/develop`, dùng `CookieAccessTokenFilter` và bearer resolver tách cookie khỏi header của `develop` để Spring Security áp dụng CSRF cho cookie.
+- Cập nhật test và tài liệu API. Sau khi merge `origin/develop`, `build` chạy thành công qua ổ đĩa ánh xạ ASCII; 105 test, 0 lỗi.
 
 ## Đang dở
 

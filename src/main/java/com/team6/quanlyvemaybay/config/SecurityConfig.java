@@ -1,5 +1,7 @@
 package com.team6.quanlyvemaybay.config;
 
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -16,21 +18,18 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
 import org.springframework.security.oauth2.server.resource.web.DefaultBearerTokenResolver;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
-import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.filter.OncePerRequestFilter;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import java.security.MessageDigest;
-import java.nio.charset.StandardCharsets;
 import tools.jackson.databind.ObjectMapper;
 
+import java.io.IOException;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
@@ -70,7 +69,8 @@ public class SecurityConfig {
                                 "/api/v1/destinations", "/api/v1/destinations/**").permitAll()
                         .requestMatchers("/api/v1/nhan-vien", "/api/v1/nhan-vien/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/reports/**", "/api/v1/statistics/**",
-                                "/api/v1/ve-may-bay/**", "/api/v1/tin-tuc/**")
+                                "/api/v1/ve-may-bay/**", "/api/v1/tin-tuc/**",
+                                "/api/v1/khach-hang", "/api/v1/khach-hang/**")
                         .hasAnyRole("ADMIN", "NHAN_VIEN")
                         .requestMatchers(HttpMethod.POST, "/api/v1/destinations/**")
                         .hasAnyRole("ADMIN", "NHAN_VIEN")
@@ -79,7 +79,7 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(resourceServer -> resourceServer
-                        .bearerTokenResolver(cookieOrHeaderTokenResolver())
+                        .bearerTokenResolver(bearerTokenResolver())
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(token -> {
                             String role = token.getClaimAsString("role");
                             List<SimpleGrantedAuthority> authorities = role == null
@@ -88,6 +88,7 @@ public class SecurityConfig {
                             return new JwtAuthenticationToken(token, authorities);
                         }))
                 )
+                .addFilterBefore(new CookieAccessTokenFilter(), BearerTokenAuthenticationFilter.class)
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint((request, response, exception) ->
                                 writeProblem(objectMapper, request, response, 401,
@@ -102,50 +103,40 @@ public class SecurityConfig {
                 .formLogin(form -> form.disable())
                 .logout(logout -> logout.disable());
 
-        // Resource Server miễn CSRF cho bearer token; cookie JWT vẫn cần token CSRF.
-        http.addFilterBefore(new OncePerRequestFilter() {
-            @Override
-            protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
-                                            FilterChain chain) throws ServletException, java.io.IOException {
-                boolean unsafe = !List.of("GET", "HEAD", "OPTIONS", "TRACE").contains(request.getMethod());
-                boolean cookieAuth = request.getCookies() != null && Arrays.stream(request.getCookies())
-                        .anyMatch(cookie -> "access_token".equals(cookie.getName()));
-                if (unsafe && cookieAuth) {
-                    var token = csrfRepository.loadToken(request);
-                    String submitted = request.getHeader("X-XSRF-TOKEN");
-                    if (token == null || submitted == null || !MessageDigest.isEqual(
-                            token.getToken().getBytes(StandardCharsets.UTF_8),
-                            submitted.getBytes(StandardCharsets.UTF_8))) {
-                        writeProblem(objectMapper, request, response, 403, "ACCESS_DENIED",
-                                "Không có quyền truy cập", "Yêu cầu bị từ chối hoặc thiếu CSRF token hợp lệ.");
-                        return;
-                    }
-                }
-                chain.doFilter(request, response);
-            }
-        }, CsrfFilter.class);
-
         return http.build();
     }
 
-    private BearerTokenResolver cookieOrHeaderTokenResolver() {
+    private BearerTokenResolver bearerTokenResolver() {
         DefaultBearerTokenResolver headerResolver = new DefaultBearerTokenResolver();
         return request -> {
             String headerToken = headerResolver.resolve(request);
             if (headerToken != null) {
                 return headerToken;
             }
-            Cookie[] cookies = request.getCookies();
-            if (cookies == null) {
-                return null;
-            }
-            return Arrays.stream(cookies)
-                    .filter(cookie -> "access_token".equals(cookie.getName()))
-                    .map(Cookie::getValue)
-                    .filter(value -> !value.isBlank())
-                    .findFirst()
-                    .orElse(null);
+            return (String) request.getAttribute(CookieAccessTokenFilter.COOKIE_TOKEN_ATTRIBUTE);
         };
+    }
+
+    private static class CookieAccessTokenFilter extends OncePerRequestFilter {
+        private static final String COOKIE_TOKEN_ATTRIBUTE = CookieAccessTokenFilter.class.getName() + ".token";
+
+        @Override
+        protected void doFilterInternal(
+                HttpServletRequest request,
+                HttpServletResponse response,
+                FilterChain filterChain
+        ) throws ServletException, IOException {
+            Cookie[] cookies = request.getCookies();
+            if (cookies != null) {
+                Arrays.stream(cookies)
+                        .filter(cookie -> "access_token".equals(cookie.getName()))
+                        .map(Cookie::getValue)
+                        .filter(value -> !value.isBlank())
+                        .findFirst()
+                        .ifPresent(value -> request.setAttribute(COOKIE_TOKEN_ATTRIBUTE, value));
+            }
+            filterChain.doFilter(request, response);
+        }
     }
 
     private void writeProblem(

@@ -114,6 +114,7 @@ Yêu cầu đăng nhập và CSRF token hợp lệ. Mật khẩu hiện tại ph
 - Đổi mật khẩu không thu hồi access token đã phát hành; token cũ hết hạn theo TTL tối đa 15 phút.
 - CSRF vẫn bật. FE phải gọi endpoint CSRF và gửi header tương ứng cho các request thay đổi dữ liệu.
 - Báo cáo, thống kê, quản lý nhân viên, vé, tin tức và điểm đến ghi mới yêu cầu vai trò `ADMIN` hoặc `NHAN_VIEN`; tạo đặt chỗ yêu cầu đăng nhập. Tìm chuyến bay, thông tin công khai và đọc điểm đến là API công khai.
+- Các API quản lý khách hàng `/api/v1/khach-hang/**` yêu cầu vai trò `ADMIN` hoặc `NHAN_VIEN`; request thay đổi dữ liệu phải có CSRF token hợp lệ.
 - Tài khoản mẫu trong `data.sql` dùng hash SHA-1 cũ; không thể đăng nhập qua cơ chế BCrypt mới. Tạo tài khoản mới để kiểm thử.
 - Ứng dụng yêu cầu đặt `JWT_SECRET` dài tối thiểu 32 byte. Trên HTTPS cần đặt `COOKIE_SECURE=true`; dev HTTP dùng `false`.
 
