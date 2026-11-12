@@ -14,6 +14,7 @@
 - Đã chuẩn bị entity snapshot, API `PUT /api/v1/ve-may-bay/{id}`, DTO validation, service khóa vé và chỉ cập nhật hai trường của vé; danh sách/tìm kiếm tên đọc snapshot.
 - Đã chuẩn bị hai file Flyway version `20261112_1100` (thêm cột nullable) và `20261112_1110` (backfill từng vé). Chưa chạy migration hoặc baseline.
 - `./gradlew assemble test` với ba lớp test chọn lọc đạt ngày 2026-11-12: 10 test, 0 lỗi. Đây là unit/Web MVC test dùng mock, không kết nối database.
+- Đã fetch `origin/develop` tới `bf3b30c` (bao gồm PR #11 thanh toán), giải conflict ở `VeMayBayRepository` bằng cách giữ cả `findByDatChoId` và truy vấn snapshot. Sau đó `./gradlew build -x test` đạt; chạy lại 3 lớp test chọn lọc: 10 test, 0 lỗi. Chưa chạy `@SpringBootTest`/full test vì chưa có database thử nghiệm an toàn.
 
 ## Đang dở
 

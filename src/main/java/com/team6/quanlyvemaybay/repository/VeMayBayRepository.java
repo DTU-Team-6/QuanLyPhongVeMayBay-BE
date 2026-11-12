@@ -27,6 +27,8 @@ public interface VeMayBayRepository extends JpaRepository<VeMayBay, Long> {
     @Query("select v from VeMayBay v join fetch v.datCho where v.id = :id")
     Optional<VeMayBay> findForTicketUpdate(@Param("id") Long id);
 
+    List<VeMayBay> findByDatChoId(Long datChoId);
+
     @Query(value = """
             select v from VeMayBay v
             join fetch v.datCho dc
