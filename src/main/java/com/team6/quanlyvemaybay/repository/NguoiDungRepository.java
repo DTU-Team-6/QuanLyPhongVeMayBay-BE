@@ -12,6 +12,7 @@ public interface NguoiDungRepository extends JpaRepository<NguoiDung, Long> {
     Optional<NguoiDung> findByTaiKhoanEmail(String taiKhoanEmail);
     Optional<NguoiDung> findByTaiKhoanEmailIgnoreCase(String taiKhoanEmail);
     boolean existsByTaiKhoanEmailIgnoreCase(String taiKhoanEmail);
+    boolean existsByTaiKhoanEmailIgnoreCaseAndIdNot(String taiKhoanEmail, Long id);
 
     @Modifying
     @Query("update NguoiDung nd set nd.trangThai = 0 where nd.id = :id and nd.trangThai = 1")
