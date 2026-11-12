@@ -77,6 +77,8 @@ public class SecurityConfig {
                         .hasAnyRole("ADMIN", "NHAN_VIEN")
                         .requestMatchers("/api/v1/dat-cho/**")
                         .hasAnyRole("ADMIN", "NHAN_VIEN", "KHACH_HANG")
+                        .requestMatchers("/api/v1/chat/**")
+                        .hasAnyRole("ADMIN", "KHACH_HANG")
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(resourceServer -> resourceServer
