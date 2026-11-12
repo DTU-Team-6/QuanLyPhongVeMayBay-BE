@@ -2,12 +2,14 @@ package com.team6.quanlyvemaybay.controller;
 
 import com.team6.quanlyvemaybay.dto.nhanvien.ThemNhanVienRequest;
 import com.team6.quanlyvemaybay.dto.nhanvien.ThemNhanVienResponse;
+import com.team6.quanlyvemaybay.dto.nhanvien.XoaNhanVienResponse;
 import com.team6.quanlyvemaybay.entity.enums.GioiTinh;
 import com.team6.quanlyvemaybay.entity.enums.VaiTro;
 import com.team6.quanlyvemaybay.exception.GlobalExceptionHandler;
 import com.team6.quanlyvemaybay.service.NhanVienService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -15,10 +17,12 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDate;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(controllers = NhanVienController.class, properties = "app.nhan-vien.allow-unsecured=true")
+@AutoConfigureMockMvc(addFilters = false)
 @Import(GlobalExceptionHandler.class)
 class NhanVienControllerTest {
     @Autowired MockMvc mvc;
@@ -40,6 +44,22 @@ class NhanVienControllerTest {
     void tuChoiThongTinKhongHopLe() throws Exception {
         mvc.perform(post("/api/v1/nhan-vien").contentType("application/json")
                         .content(validBody().replace("an@example.test", "khong-phai-email")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void ngungHoatDongTraTrangThaiMoi() throws Exception {
+        when(service.xoaNhanVien(1L)).thenReturn(new XoaNhanVienResponse(1L, "NV1", (byte) 0));
+        mvc.perform(delete("/api/v1/nhan-vien/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.maNhanVien").value("NV1"))
+                .andExpect(jsonPath("$.data.trangThai").value(0));
+    }
+
+    @Test
+    void idKhongHopLeTra400() throws Exception {
+        mvc.perform(delete("/api/v1/nhan-vien/0"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
     }

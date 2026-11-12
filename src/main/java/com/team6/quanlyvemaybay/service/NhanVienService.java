@@ -3,15 +3,17 @@ package com.team6.quanlyvemaybay.service;
 import com.team6.quanlyvemaybay.dto.common.ErrorDetail;
 import com.team6.quanlyvemaybay.dto.nhanvien.ThemNhanVienRequest;
 import com.team6.quanlyvemaybay.dto.nhanvien.ThemNhanVienResponse;
+import com.team6.quanlyvemaybay.dto.nhanvien.XoaNhanVienResponse;
 import com.team6.quanlyvemaybay.entity.NguoiDung;
 import com.team6.quanlyvemaybay.entity.NhanVien;
 import com.team6.quanlyvemaybay.entity.enums.VaiTro;
 import com.team6.quanlyvemaybay.exception.BusinessException;
+import com.team6.quanlyvemaybay.exception.ResourceNotFoundException;
 import com.team6.quanlyvemaybay.repository.NguoiDungRepository;
 import com.team6.quanlyvemaybay.repository.NhanVienRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,11 +24,16 @@ import java.util.Locale;
 public class NhanVienService {
     private final NguoiDungRepository nguoiDungRepository;
     private final NhanVienRepository nhanVienRepository;
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    private final PasswordEncoder passwordEncoder;
 
-    public NhanVienService(NguoiDungRepository nguoiDungRepository, NhanVienRepository nhanVienRepository) {
+    public NhanVienService(
+            NguoiDungRepository nguoiDungRepository,
+            NhanVienRepository nhanVienRepository,
+            PasswordEncoder passwordEncoder
+    ) {
         this.nguoiDungRepository = nguoiDungRepository;
         this.nhanVienRepository = nhanVienRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Transactional
@@ -70,8 +77,28 @@ public class NhanVienService {
                 nguoiDung.getVaiTro(), nguoiDung.getTrangThai());
     }
 
+    @Transactional
+    public XoaNhanVienResponse xoaNhanVien(Long id) {
+        NhanVien nhanVien = nhanVienRepository.findWithNguoiDungById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("EMPLOYEE_NOT_FOUND", "Không tìm thấy nhân viên."));
+        if (nhanVien.getNguoiDung().getTrangThai() == null
+                || nhanVien.getNguoiDung().getTrangThai() != 1) {
+            throw daNgungHoatDong();
+        }
+        // UPDATE có điều kiện để hai yêu cầu đồng thời không cùng báo xóa thành công.
+        if (nguoiDungRepository.ngungHoatDongNeuDangHoatDong(id) != 1) {
+            throw daNgungHoatDong();
+        }
+        return new XoaNhanVienResponse(id, nhanVien.getMaNhanVien(), (byte) 0);
+    }
+
     private BusinessException trungDuLieu(String field, String message) {
         return new BusinessException(HttpStatus.CONFLICT, "DUPLICATE_EMPLOYEE", message,
                 List.of(new ErrorDetail(field, "DUPLICATE", message)));
+    }
+
+    private BusinessException daNgungHoatDong() {
+        return new BusinessException(HttpStatus.CONFLICT, "EMPLOYEE_ALREADY_INACTIVE",
+                "Nhân viên đã ngừng hoạt động.");
     }
 }
