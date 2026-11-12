@@ -88,7 +88,7 @@ class SuaVeControllerTest {
                         .header("X-XSRF-TOKEN", "csrf-value"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
-                .andExpect(jsonPath("$.details").isNotEmpty());
+                .andExpect(jsonPath("$.details[0].field").value("hoTenNguoiDi"));
     }
 
     @Test
