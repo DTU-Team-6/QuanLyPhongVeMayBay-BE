@@ -10,15 +10,17 @@ Mỗi người làm trên máy mình.
    CREATE USER 'veapp'@'localhost' IDENTIFIED BY '<mật khẩu của bạn>';
    GRANT ALL PRIVILEGES ON ve_may_bay.* TO 'veapp'@'localhost';
    ```
-   Database phải **rỗng** trước lần chạy đầu: Flyway sẽ tự tạo bảng, không chạy tay file SQL.
+   Ở trạng thái repository hiện tại chưa có migration Flyway; `ddl-auto` cũng tắt nên ứng dụng không tự tạo bảng. Cần dùng database đã được chuẩn bị đúng schema. Không chạy trực tiếp `schema.sql` vì file này có lệnh `DROP TABLE`.
 4. **Lấy code:** `git clone` repo, `git checkout develop`, rồi tạo nhánh làm việc từ đó.
 5. **Chạy app** (trong cùng một cửa sổ Terminal, vì `export` chỉ có hiệu lực ở cửa sổ đó):
    ```bash
    export DB_PASSWORD='<mật khẩu của bạn>'
+   export JWT_SECRET="$(openssl rand -base64 32)"
+   export COOKIE_SECURE=false
    ./gradlew bootRun
    ```
-   Thành công khi log có `Successfully applied 2 migrations` và `Started QuanlyvemaybayApplication`.
-6. **Kiểm tra:** `mysql -u veapp -p ve_may_bay -e "SHOW TABLES;"` phải ra 24 bảng (23 bảng dự án + `flyway_schema_history`).
+   Thành công khi log có `Started QuanlyvemaybayApplication`.
+6. **Kiểm tra:** `mysql -u veapp -p ve_may_bay -e "SHOW TABLES;"` để xác nhận database đã có schema trước khi dùng API.
 
 ## Windows
 
@@ -48,9 +50,7 @@ Testcontainers + MySQL là hướng đã chốt cho test nhưng **chưa triển 
 | Lỗi | Nguyên nhân và cách xử lý |
 |---|---|
 | `Access denied for user 'veapp'` | User chưa được tạo, hoặc `DB_PASSWORD` sai/chưa `export` trong cửa sổ Terminal đang chạy. Thử `mysql -u veapp -p ve_may_bay` để kiểm tra mật khẩu |
-| `Found non-empty schema(s)... without schema history table` | Database đã có bảng tạo tay. Xoá và tạo lại database rỗng |
-| `Migration checksum mismatch` | File migration đã chạy bị sửa sau khi chạy (V1/V2 hoặc file khác). Khi dev: xoá và tạo lại database. Về lâu dài: không sửa file cũ, thêm file migration mới (đặt version theo thời gian, xem `03-database.md`) |
-| `Detected resolved migration not applied to database` | Có file migration mới nhưng version nhỏ hơn file đã chạy (thường do merge nhánh cũ). File chưa merge thì đổi tên sang thời gian mới. Không tự bật `out-of-order`, hỏi nhóm trước |
+| Không có bảng khi gọi API | Repository hiện chưa có migration Flyway và Hibernate không tự tạo schema. Xác nhận đã cấu hình đúng database đã được chuẩn bị; không chạy trực tiếp `schema.sql` vì file có lệnh `DROP TABLE` |
 | `contextLoads() FAILED` khi `./gradlew build` | Test khởi động cả app nên hiện cần MySQL đang chạy và `DB_PASSWORD` đúng (sau khi chuyển sang Testcontainers thì cần Docker đang chạy). Chạy `./gradlew build -x test` nếu chỉ cần build |
 | `No matching toolchains found ... Java 21` | Chưa cài JDK 21. Cài xong chạy `./gradlew --stop` |
 | `mysql: command not found` (macOS) hoặc `'mysql' is not recognized` (Windows) | Chưa thêm thư mục `bin` của MySQL vào `PATH`; trên Windows nhớ mở terminal mới sau khi sửa |

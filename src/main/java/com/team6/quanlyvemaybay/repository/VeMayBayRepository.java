@@ -1,6 +1,8 @@
 package com.team6.quanlyvemaybay.repository;
 
 import com.team6.quanlyvemaybay.entity.VeMayBay;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import com.team6.quanlyvemaybay.entity.enums.TrangThaiDatCho;
 import com.team6.quanlyvemaybay.entity.enums.TrangThaiVe;
 import com.team6.quanlyvemaybay.repository.projection.AirlineAggregationRow;
@@ -19,6 +21,39 @@ import java.util.List;
 public interface VeMayBayRepository extends JpaRepository<VeMayBay, Long> {
 
     List<VeMayBay> findByDatChoId(Long datChoId);
+
+    @Query(value = """
+            select v from VeMayBay v
+            join fetch v.datCho dc
+            join fetch v.hangVe hv
+            join fetch hv.chuyenBay cb
+            join fetch cb.sanBayDi
+            join fetch cb.sanBayDen
+            where (:trangThai is null or v.trangThai = :trangThai)
+              and (:tuKhoa = '' or
+                (:tieuChi = 'MA_VE' and locate(lower(:tuKhoa), lower(v.maVe)) > 0) or
+                (:tieuChi = 'MA_DAT_CHO' and locate(lower(:tuKhoa), lower(dc.maDatCho)) > 0) or
+                (:tieuChi = 'TEN_NGUOI_DI' and exists
+                    (select 1 from HanhKhach hk where hk.id = v.hanhKhachId
+                     and locate(lower(:tuKhoa), lower(hk.hoTen)) > 0)) or
+                (:tieuChi = 'MA_CHUYEN_BAY' and locate(lower(:tuKhoa), lower(cb.maChuyenBay)) > 0))
+            order by v.id desc
+            """, countQuery = """
+            select count(v) from VeMayBay v
+            join v.datCho dc join v.hangVe hv join hv.chuyenBay cb
+            where (:trangThai is null or v.trangThai = :trangThai)
+              and (:tuKhoa = '' or
+                (:tieuChi = 'MA_VE' and locate(lower(:tuKhoa), lower(v.maVe)) > 0) or
+                (:tieuChi = 'MA_DAT_CHO' and locate(lower(:tuKhoa), lower(dc.maDatCho)) > 0) or
+                (:tieuChi = 'TEN_NGUOI_DI' and exists
+                    (select 1 from HanhKhach hk where hk.id = v.hanhKhachId
+                     and locate(lower(:tuKhoa), lower(hk.hoTen)) > 0)) or
+                (:tieuChi = 'MA_CHUYEN_BAY' and locate(lower(:tuKhoa), lower(cb.maChuyenBay)) > 0))
+            """)
+    Page<VeMayBay> timDanhSachVe(@Param("trangThai") TrangThaiVe trangThai,
+                                 @Param("tieuChi") String tieuChi,
+                                 @Param("tuKhoa") String tuKhoa,
+                                 Pageable pageable);
 
     @Query("""
             SELECT hhk.maHang AS maHang,
