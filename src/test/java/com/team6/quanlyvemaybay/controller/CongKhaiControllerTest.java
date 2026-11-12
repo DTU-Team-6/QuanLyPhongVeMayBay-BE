@@ -10,6 +10,7 @@ import com.team6.quanlyvemaybay.exception.GlobalExceptionHandler;
 import com.team6.quanlyvemaybay.service.ThongTinChungService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataAccessResourceFailureException;
@@ -30,6 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Kiểm thử WebMvc cho API GET /api/v1/public/common-info.
  */
 @WebMvcTest(controllers = CongKhaiController.class)
+@AutoConfigureMockMvc(addFilters = false)
 @Import(GlobalExceptionHandler.class)
 class CongKhaiControllerTest {
 
