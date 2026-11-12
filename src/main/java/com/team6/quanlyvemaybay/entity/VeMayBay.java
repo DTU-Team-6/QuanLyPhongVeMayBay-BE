@@ -37,6 +37,12 @@ public class VeMayBay {
     @Column(name = "hanh_khach_id", nullable = false)
     private Long hanhKhachId;
 
+    @Column(name = "ho_ten_nguoi_di", length = 100)
+    private String hoTenNguoiDi;
+
+    @Column(name = "email_thanh_toan", length = 100)
+    private String emailThanhToan;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "hang_ve_id", nullable = false)
     private HangVeChuyenBay hangVe;
@@ -106,6 +112,22 @@ public class VeMayBay {
 
     public void setHanhKhachId(Long hanhKhachId) {
         this.hanhKhachId = hanhKhachId;
+    }
+
+    public String getHoTenNguoiDi() {
+        return hoTenNguoiDi;
+    }
+
+    public void setHoTenNguoiDi(String hoTenNguoiDi) {
+        this.hoTenNguoiDi = hoTenNguoiDi;
+    }
+
+    public String getEmailThanhToan() {
+        return emailThanhToan;
+    }
+
+    public void setEmailThanhToan(String emailThanhToan) {
+        this.emailThanhToan = emailThanhToan;
     }
 
     public HangVeChuyenBay getHangVe() {
