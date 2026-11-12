@@ -16,6 +16,14 @@ public record PageResponse<T>(
         boolean isFirst,
         boolean isLast
 ) {
+    public int page() {
+        return pageNumber;
+    }
+
+    public int size() {
+        return pageSize;
+    }
+
     public static <T> PageResponse<T> of(Page<T> page) {
         return new PageResponse<>(
                 page.getContent(),

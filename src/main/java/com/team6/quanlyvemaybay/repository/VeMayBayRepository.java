@@ -20,6 +20,8 @@ import java.util.List;
  */
 public interface VeMayBayRepository extends JpaRepository<VeMayBay, Long> {
 
+    List<VeMayBay> findByDatChoId(Long datChoId);
+
     @Query(value = """
             select v from VeMayBay v
             join fetch v.datCho dc
