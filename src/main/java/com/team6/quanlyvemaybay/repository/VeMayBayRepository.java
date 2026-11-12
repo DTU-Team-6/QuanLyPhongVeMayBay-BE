@@ -1,6 +1,7 @@
 package com.team6.quanlyvemaybay.repository;
 
 import com.team6.quanlyvemaybay.entity.VeMayBay;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import com.team6.quanlyvemaybay.entity.enums.TrangThaiDatCho;
@@ -9,16 +10,22 @@ import com.team6.quanlyvemaybay.repository.projection.AirlineAggregationRow;
 import com.team6.quanlyvemaybay.repository.projection.StaffTicketCountRow;
 import com.team6.quanlyvemaybay.repository.projection.TimeAggregationRow;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Repository truy vấn thống kê vé bán ra và doanh thu chi tiết trên bảng ve_may_bay.
  */
 public interface VeMayBayRepository extends JpaRepository<VeMayBay, Long> {
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select v from VeMayBay v join fetch v.datCho where v.id = :id")
+    Optional<VeMayBay> findForTicketUpdate(@Param("id") Long id);
 
     List<VeMayBay> findByDatChoId(Long datChoId);
 
@@ -33,9 +40,7 @@ public interface VeMayBayRepository extends JpaRepository<VeMayBay, Long> {
               and (:tuKhoa = '' or
                 (:tieuChi = 'MA_VE' and locate(lower(:tuKhoa), lower(v.maVe)) > 0) or
                 (:tieuChi = 'MA_DAT_CHO' and locate(lower(:tuKhoa), lower(dc.maDatCho)) > 0) or
-                (:tieuChi = 'TEN_NGUOI_DI' and exists
-                    (select 1 from HanhKhach hk where hk.id = v.hanhKhachId
-                     and locate(lower(:tuKhoa), lower(hk.hoTen)) > 0)) or
+                (:tieuChi = 'TEN_NGUOI_DI' and locate(lower(:tuKhoa), lower(v.hoTenNguoiDi)) > 0) or
                 (:tieuChi = 'MA_CHUYEN_BAY' and locate(lower(:tuKhoa), lower(cb.maChuyenBay)) > 0))
             order by v.id desc
             """, countQuery = """
@@ -45,9 +50,7 @@ public interface VeMayBayRepository extends JpaRepository<VeMayBay, Long> {
               and (:tuKhoa = '' or
                 (:tieuChi = 'MA_VE' and locate(lower(:tuKhoa), lower(v.maVe)) > 0) or
                 (:tieuChi = 'MA_DAT_CHO' and locate(lower(:tuKhoa), lower(dc.maDatCho)) > 0) or
-                (:tieuChi = 'TEN_NGUOI_DI' and exists
-                    (select 1 from HanhKhach hk where hk.id = v.hanhKhachId
-                     and locate(lower(:tuKhoa), lower(hk.hoTen)) > 0)) or
+                (:tieuChi = 'TEN_NGUOI_DI' and locate(lower(:tuKhoa), lower(v.hoTenNguoiDi)) > 0) or
                 (:tieuChi = 'MA_CHUYEN_BAY' and locate(lower(:tuKhoa), lower(cb.maChuyenBay)) > 0))
             """)
     Page<VeMayBay> timDanhSachVe(@Param("trangThai") TrangThaiVe trangThai,
