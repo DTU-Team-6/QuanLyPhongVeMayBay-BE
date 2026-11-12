@@ -4,4 +4,4 @@
 
 SRS mô tả thao tác xóa sau khi quản trị viên xác nhận; theo quy định nhóm và yêu cầu chức năng, Backend thực hiện xóa mềm. Việc hiển thị bước xác nhận thuộc giao diện, không nằm trong API này.
 
-Endpoint tắt mặc định vì chưa có phân quyền ADMIN. Chỉ bật tạm để thử với database biệt lập bằng `APP_NHAN_VIEN_ALLOW_UNSECURED=true` và giới hạn lắng nghe ở `SERVER_ADDRESS=127.0.0.1`. Không bật trên dữ liệu thật hoặc môi trường công khai.
+Endpoint yêu cầu đăng nhập với vai trò `ADMIN`. Với yêu cầu DELETE dùng cookie xác thực, FE phải gửi cookie `XSRF-TOKEN` và header `X-XSRF-TOKEN` tương ứng.

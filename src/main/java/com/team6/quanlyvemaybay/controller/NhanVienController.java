@@ -9,7 +9,6 @@ import com.team6.quanlyvemaybay.dto.nhanvien.XoaNhanVienResponse;
 import com.team6.quanlyvemaybay.service.NhanVienService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -21,10 +20,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import java.net.URI;
 
-/** Chỉ bật trong môi trường kiểm thử biệt lập khi chưa có phân quyền ADMIN. */
 @RestController
 @RequestMapping("/api/v1/nhan-vien")
-@ConditionalOnProperty(name = "app.nhan-vien.allow-unsecured", havingValue = "true")
 public class NhanVienController {
     private final NhanVienService service;
 

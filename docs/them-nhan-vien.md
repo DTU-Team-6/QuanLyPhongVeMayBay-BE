@@ -19,6 +19,6 @@ Ví dụ body Postman (chỉ dùng dữ liệu giả trên database thử nghi�
 
 Thành công trả HTTP 201, `Location: /api/v1/nhan-vien/{id}` và DTO nhân viên. Dữ liệu sai trả HTTP 400; email hoặc mã trùng trả HTTP 409. Các lỗi theo RFC 9457, có `code` và `details`.
 
-Endpoint mặc định tắt vì chưa có xác thực/phân quyền. Chỉ để thử trong môi trường biệt lập, đặt `APP_NHAN_VIEN_ALLOW_UNSECURED=true` và `SERVER_ADDRESS=127.0.0.1` trong phiên chạy ứng dụng. Không bật trên database thật hoặc môi trường có thể truy cập từ bên ngoài. Phải tích hợp phân quyền ADMIN trước khi sử dụng thực tế.
+Endpoint yêu cầu đăng nhập với vai trò `ADMIN`. Với yêu cầu POST dùng cookie xác thực, FE phải gửi cookie `XSRF-TOKEN` và header `X-XSRF-TOKEN` tương ứng.
 
 Lưu ý: SRS mô tả ngày dạng `d/m/yyyy` cho giao diện; API JSON dùng ISO `yyyy-MM-dd` để Spring xử lý nhất quán. Project chưa có migration Flyway trên nhánh `develop`; API này không thay đổi schema.

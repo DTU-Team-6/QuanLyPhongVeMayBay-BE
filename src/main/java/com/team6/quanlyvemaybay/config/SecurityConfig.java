@@ -21,8 +21,14 @@ import org.springframework.security.oauth2.server.resource.web.DefaultBearerToke
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
+import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.filter.OncePerRequestFilter;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import java.security.MessageDigest;
+import java.nio.charset.StandardCharsets;
 import tools.jackson.databind.ObjectMapper;
 
 import java.net.URI;
@@ -62,8 +68,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET,
                                 "/api/v1/flights/**", "/api/v1/public/**",
                                 "/api/v1/destinations", "/api/v1/destinations/**").permitAll()
+                        .requestMatchers("/api/v1/nhan-vien", "/api/v1/nhan-vien/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/reports/**", "/api/v1/statistics/**",
-                                "/api/v1/nhan-vien/**", "/api/v1/ve-may-bay/**", "/api/v1/tin-tuc/**")
+                                "/api/v1/ve-may-bay/**", "/api/v1/tin-tuc/**")
                         .hasAnyRole("ADMIN", "NHAN_VIEN")
                         .requestMatchers(HttpMethod.POST, "/api/v1/destinations/**")
                         .hasAnyRole("ADMIN", "NHAN_VIEN")
@@ -94,6 +101,29 @@ public class SecurityConfig {
                 .httpBasic(basic -> basic.disable())
                 .formLogin(form -> form.disable())
                 .logout(logout -> logout.disable());
+
+        // Resource Server miễn CSRF cho bearer token; cookie JWT vẫn cần token CSRF.
+        http.addFilterBefore(new OncePerRequestFilter() {
+            @Override
+            protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
+                                            FilterChain chain) throws ServletException, java.io.IOException {
+                boolean unsafe = !List.of("GET", "HEAD", "OPTIONS", "TRACE").contains(request.getMethod());
+                boolean cookieAuth = request.getCookies() != null && Arrays.stream(request.getCookies())
+                        .anyMatch(cookie -> "access_token".equals(cookie.getName()));
+                if (unsafe && cookieAuth) {
+                    var token = csrfRepository.loadToken(request);
+                    String submitted = request.getHeader("X-XSRF-TOKEN");
+                    if (token == null || submitted == null || !MessageDigest.isEqual(
+                            token.getToken().getBytes(StandardCharsets.UTF_8),
+                            submitted.getBytes(StandardCharsets.UTF_8))) {
+                        writeProblem(objectMapper, request, response, 403, "ACCESS_DENIED",
+                                "Không có quyền truy cập", "Yêu cầu bị từ chối hoặc thiếu CSRF token hợp lệ.");
+                        return;
+                    }
+                }
+                chain.doFilter(request, response);
+            }
+        }, CsrfFilter.class);
 
         return http.build();
     }

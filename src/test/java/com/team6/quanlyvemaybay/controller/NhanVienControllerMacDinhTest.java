@@ -19,9 +19,9 @@ class NhanVienControllerMacDinhTest {
     @MockitoBean NhanVienService service;
 
     @Test
-    void endpointTatMacDinh() throws Exception {
-        mvc.perform(post("/api/v1/nhan-vien")).andExpect(status().isNotFound());
-        mvc.perform(put("/api/v1/nhan-vien/1")).andExpect(status().isNotFound());
-        mvc.perform(delete("/api/v1/nhan-vien/1")).andExpect(status().isNotFound());
+    void endpointDuocDangKyMacDinh() throws Exception {
+        mvc.perform(post("/api/v1/nhan-vien")).andExpect(status().isBadRequest());
+        mvc.perform(put("/api/v1/nhan-vien/1")).andExpect(status().isBadRequest());
+        mvc.perform(delete("/api/v1/nhan-vien/0")).andExpect(status().isBadRequest());
     }
 }
