@@ -9,16 +9,23 @@ import com.team6.quanlyvemaybay.repository.projection.AirlineAggregationRow;
 import com.team6.quanlyvemaybay.repository.projection.StaffTicketCountRow;
 import com.team6.quanlyvemaybay.repository.projection.TimeAggregationRow;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
+import jakarta.persistence.LockModeType;
 
 /**
  * Repository truy vấn thống kê vé bán ra và doanh thu chi tiết trên bảng ve_may_bay.
  */
 public interface VeMayBayRepository extends JpaRepository<VeMayBay, Long> {
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select v from VeMayBay v join fetch v.datCho where v.id = :id")
+    Optional<VeMayBay> findForCancellation(@Param("id") Long id);
 
     @Query(value = """
             select v from VeMayBay v
