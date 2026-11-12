@@ -1,6 +1,7 @@
 package com.team6.quanlyvemaybay.repository;
 
 import com.team6.quanlyvemaybay.entity.NguoiDung;
+import com.team6.quanlyvemaybay.entity.enums.VaiTro;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -11,6 +12,7 @@ import java.util.Optional;
 public interface NguoiDungRepository extends JpaRepository<NguoiDung, Long> {
     Optional<NguoiDung> findByTaiKhoanEmail(String taiKhoanEmail);
     Optional<NguoiDung> findByTaiKhoanEmailIgnoreCase(String taiKhoanEmail);
+    Optional<NguoiDung> findFirstByVaiTroAndTrangThaiOrderByIdAsc(VaiTro vaiTro, Byte trangThai);
     boolean existsByTaiKhoanEmailIgnoreCase(String taiKhoanEmail);
     boolean existsByTaiKhoanEmailIgnoreCaseAndIdNot(String taiKhoanEmail, Long id);
 
