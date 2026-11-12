@@ -15,10 +15,12 @@
 - Đã chuẩn bị hai file Flyway version `20261112_1100` (thêm cột nullable) và `20261112_1110` (backfill từng vé). Chưa chạy migration hoặc baseline.
 - `./gradlew assemble test` với ba lớp test chọn lọc đạt ngày 2026-11-12: 10 test, 0 lỗi. Đây là unit/Web MVC test dùng mock, không kết nối database.
 - Đã fetch `origin/develop` tới `bf3b30c` (bao gồm PR #11 thanh toán), giải conflict ở `VeMayBayRepository` bằng cách giữ cả `findByDatChoId` và truy vấn snapshot. Sau đó `./gradlew build -x test` đạt; chạy lại 3 lớp test chọn lọc: 10 test, 0 lỗi. Chưa chạy `@SpringBootTest`/full test vì chưa có database thử nghiệm an toàn.
+- Bổ sung các ca Web MVC 400/401/403/404/409 và JSON lỗi cho API sửa vé; chạy lại 3 lớp test chọn lọc: 16 test, 0 lỗi. Đã viết hợp đồng request/response dự kiến tại `docs/sua-ve-api.md` để dùng khi kiểm thử Postman.
 
 ## Đang dở
 
 - Chờ quyền chỉ đọc và database thử nghiệm tách biệt để xác minh schema/history, baseline, backfill và các truy vấn JPA thực tế. Người dùng cho phép chuẩn bị code và file migration nhưng chưa cho phép chạy migration hoặc kết nối database thật.
+- Người dùng xác nhận hiện chưa có MySQL test riêng; chưa gọi HTTP thực tế. Không push Task 3 hoặc bắt đầu Task 4 trước khi có bằng chứng kiểm thử endpoint và điều kiện database được duyệt.
 - PR #24 chưa merge nên API danh sách trong nền `origin/develop` vẫn bị `@ConditionalOnProperty` tắt mặc định; cần tích hợp sau review của team.
 
 ## Việc tiếp theo
