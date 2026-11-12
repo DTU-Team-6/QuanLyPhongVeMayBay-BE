@@ -9,16 +9,13 @@ import com.team6.quanlyvemaybay.service.VeMayBayService;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Chỉ bật trong môi trường kiểm thử biệt lập khi chưa có phân quyền nhân viên. */
 @RestController
 @RequestMapping("/api/v1/ve-may-bay")
-@ConditionalOnProperty(name = "app.ve.allow-unsecured", havingValue = "true")
 public class VeMayBayController {
     private final VeMayBayService service;
 

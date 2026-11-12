@@ -17,7 +17,7 @@ class VeMayBayControllerMacDinhTest {
     @MockitoBean VeMayBayService service;
 
     @Test
-    void endpointTatMacDinh() throws Exception {
-        mvc.perform(get("/api/v1/ve-may-bay")).andExpect(status().isNotFound());
+    void endpointDuocDangKyMacDinh() throws Exception {
+        mvc.perform(get("/api/v1/ve-may-bay")).andExpect(status().isOk());
     }
 }

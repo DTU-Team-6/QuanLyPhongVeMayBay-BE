@@ -6,6 +6,6 @@ Tham số tùy chọn: `trangThai` (`CHO_THANH_TOAN`, `DA_THANH_TOAN`, `DA_HUY`)
 
 Ví dụ thử trong Postman: `GET http://localhost:8080/api/v1/ve-may-bay?trangThai=DA_THANH_TOAN&tieuChi=MA_DAT_CHO&tuKhoa=TESTPNR1&trang=0&kichThuoc=20` (không có body).
 
-Endpoint mặc định tắt vì chưa có xác thực và phân quyền nhân viên. Chỉ bật tạm trên database thử nghiệm biệt lập bằng `APP_VE_ALLOW_UNSECURED=true` và giới hạn lắng nghe ở `SERVER_ADDRESS=127.0.0.1`. Không bật trên dữ liệu thật hoặc môi trường công khai.
+Endpoint yêu cầu đăng nhập với vai trò `ADMIN` hoặc `NHAN_VIEN`. Không cần cấu hình bật riêng.
 
 Theo quyết định cho mục 6.6.1.6, danh sách gồm mọi trạng thái vé, tìm theo bốn tiêu chí trên và hiển thị `ve_may_bay.tong_gia` thay cho `gia_goc`.

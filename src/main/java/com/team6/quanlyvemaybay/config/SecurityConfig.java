@@ -69,7 +69,7 @@ public class SecurityConfig {
                                 "/api/v1/destinations", "/api/v1/destinations/**").permitAll()
                         .requestMatchers("/api/v1/nhan-vien", "/api/v1/nhan-vien/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/reports/**", "/api/v1/statistics/**",
-                                "/api/v1/ve-may-bay/**", "/api/v1/tin-tuc/**",
+                                "/api/v1/ve-may-bay", "/api/v1/ve-may-bay/**", "/api/v1/tin-tuc/**",
                                 "/api/v1/khach-hang", "/api/v1/khach-hang/**")
                         .hasAnyRole("ADMIN", "NHAN_VIEN")
                         .requestMatchers(HttpMethod.POST, "/api/v1/destinations/**")
