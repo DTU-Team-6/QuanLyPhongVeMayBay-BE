@@ -61,7 +61,8 @@ public class SecurityConfig {
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/api/v1/auth/csrf", "/api/v1/auth/register", "/api/v1/auth/login").permitAll()
+                        .requestMatchers("/api/v1/auth/csrf", "/api/v1/auth/register", "/api/v1/auth/login",
+                                "/api/v1/auth/logout").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/auth/me").authenticated()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers(HttpMethod.GET,
@@ -130,7 +131,7 @@ public class SecurityConfig {
                 FilterChain filterChain
         ) throws ServletException, IOException {
             Cookie[] cookies = request.getCookies();
-            if (cookies != null) {
+            if (cookies != null && !isAnonymousEndpoint(request)) {
                 Arrays.stream(cookies)
                         .filter(cookie -> "access_token".equals(cookie.getName()))
                         .map(Cookie::getValue)
@@ -139,6 +140,20 @@ public class SecurityConfig {
                         .ifPresent(value -> request.setAttribute(COOKIE_TOKEN_ATTRIBUTE, value));
             }
             filterChain.doFilter(request, response);
+        }
+
+        // Cookie hết hạn không được chặn dữ liệu công khai hoặc thao tác đăng nhập lại/đăng xuất.
+        // Các endpoint riêng tư vẫn xác thực cookie như bình thường; CSRF vẫn kiểm tra mọi POST.
+        private boolean isAnonymousEndpoint(HttpServletRequest request) {
+            String path = request.getRequestURI().substring(request.getContextPath().length());
+            if (List.of("/api/v1/auth/csrf", "/api/v1/auth/login", "/api/v1/auth/register",
+                    "/api/v1/auth/logout").contains(path)) {
+                return true;
+            }
+            return "GET".equals(request.getMethod()) && (
+                    path.startsWith("/api/v1/flights/") || path.equals("/api/v1/flights")
+                    || path.startsWith("/api/v1/public/")
+                    || path.equals("/api/v1/destinations") || path.startsWith("/api/v1/destinations/"));
         }
     }
 

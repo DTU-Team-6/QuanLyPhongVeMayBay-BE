@@ -72,6 +72,26 @@ public class AuthController {
                 .body(ApiResponse.ok(result.user(), "Đăng nhập thành công"));
     }
 
+    /**
+     * Xoá cookie phiên hiện tại, kể cả khi access token đã hết hạn.
+     */
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout() {
+        return ResponseEntity.noContent()
+                .header(HttpHeaders.SET_COOKIE, expiredAuthCookie("access_token").toString())
+                .header(HttpHeaders.SET_COOKIE, expiredAuthCookie("refresh_token").toString())
+                .build();
+    }
+
+    private ResponseCookie expiredAuthCookie(String name) {
+        return ResponseCookie.from(name, "")
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite("Lax")
+                .path("/")
+                .maxAge(0)
+                .build();
+    }
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<PersonalInfoResponse>> me(@AuthenticationPrincipal Jwt jwt) {
         Long userId = Long.valueOf(jwt.getSubject());

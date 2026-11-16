@@ -6,6 +6,7 @@ import com.team6.quanlyvemaybay.entity.enums.GioiTinh;
 import com.team6.quanlyvemaybay.entity.enums.VaiTro;
 import com.team6.quanlyvemaybay.exception.GlobalExceptionHandler;
 import com.team6.quanlyvemaybay.service.AuthService;
+import com.team6.quanlyvemaybay.service.ChuyenBayService;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +14,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.BadJwtException;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -21,6 +23,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -28,7 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(controllers = AuthController.class)
+@WebMvcTest(controllers = {AuthController.class, ChuyenBayController.class})
 @Import({com.team6.quanlyvemaybay.config.SecurityConfig.class, GlobalExceptionHandler.class})
 class AuthSecurityTest {
 
@@ -41,6 +44,74 @@ class AuthSecurityTest {
     @MockitoBean
     private JwtDecoder jwtDecoder;
 
+    @MockitoBean
+    private ChuyenBayService chuyenBayService;
+
+    @Test
+    void staleAccessCookieDoesNotBlockPublicFlightsOrCsrf() throws Exception {
+        when(chuyenBayService.getTopCheapFlights(10)).thenReturn(java.util.List.of());
+
+        mockMvc.perform(get("/api/v1/flights/top-cheap")
+                        .cookie(new Cookie("access_token", "expired-token")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isArray());
+        mockMvc.perform(get("/api/v1/auth/csrf")
+                        .cookie(new Cookie("access_token", "expired-token")))
+                .andExpect(status().isNoContent());
+        verifyNoInteractions(jwtDecoder);
+    }
+
+    @Test
+    void staleAccessCookieDoesNotBlockLoggingInAgain() throws Exception {
+        when(authService.login(any())).thenReturn(new AuthService.LoginResult(
+                new AuthUserResponse(42L, "user@example.com", "Nguyễn Văn A", VaiTro.KHACH_HANG),
+                "new-access-token"
+        ));
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .cookie(new Cookie("access_token", "expired-token"), new Cookie("XSRF-TOKEN", "csrf-value"))
+                        .header("X-XSRF-TOKEN", "csrf-value")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"user@example.com","password":"password-123"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Set-Cookie", org.hamcrest.Matchers.containsString("access_token=new-access-token")));
+        verifyNoInteractions(jwtDecoder);
+    }
+
+    @Test
+    void logoutClearsBothCookiesEvenWithExpiredToken() throws Exception {
+        var result = mockMvc.perform(post("/api/v1/auth/logout")
+                        .cookie(new Cookie("access_token", "expired-token"), new Cookie("XSRF-TOKEN", "csrf-value"))
+                        .header("X-XSRF-TOKEN", "csrf-value"))
+                .andExpect(status().isNoContent())
+                .andReturn();
+
+        org.assertj.core.api.Assertions.assertThat(result.getResponse().getHeaders("Set-Cookie"))
+                .hasSize(2)
+                .allSatisfy(cookie -> org.assertj.core.api.Assertions.assertThat(cookie)
+                        .contains("Max-Age=0", "Path=/", "HttpOnly", "SameSite=Lax"))
+                .anySatisfy(cookie -> org.assertj.core.api.Assertions.assertThat(cookie).startsWith("access_token="))
+                .anySatisfy(cookie -> org.assertj.core.api.Assertions.assertThat(cookie).startsWith("refresh_token="));
+        verifyNoInteractions(jwtDecoder);
+    }
+
+    @Test
+    void logoutStillRequiresCsrfToken() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/logout"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+    }
+
+    @Test
+    void staleAccessCookieStillCannotReadPrivateProfile() throws Exception {
+        when(jwtDecoder.decode("expired-token")).thenThrow(new BadJwtException("Token expired"));
+
+        mockMvc.perform(get("/api/v1/auth/me")
+                        .cookie(new Cookie("access_token", "expired-token")))
+                .andExpect(status().isUnauthorized());
+    }
     @Test
     void csrfEndpointSetsReadableCsrfCookie() throws Exception {
         mockMvc.perform(get("/api/v1/auth/csrf"))
