@@ -1,6 +1,6 @@
 # BE – Quy tắc về database (quan trọng nhất)
 
-- Schema nằm ở `src/main/resources/db/migration/`. `V1__init_schema.sql` (23 bảng) và `V2__seed_reference_data.sql` (dữ liệu danh mục) **đã chạy, KHÔNG sửa**. Muốn đổi schema thì thêm file mới, **đặt version theo thời gian** để hai người thêm cùng lúc không trùng số: `V<yyyyMMdd>_<HHmm>__<mo_ta>.sql` (hai dấu gạch dưới trước phần mô tả), ví dụ `V20261110_1030__them_bang_khuyen_mai.sql`.
+- Schema nằm ở `src/main/resources/db/migration/`. `V1__init_schema.sql` (23 bảng) và `V2__seed_reference_data.sql` (dữ liệu danh mục) đã có trong source. Mỗi thành viên dùng database local riêng; kiểm tra Flyway history của đúng môi trường trước khi chạy, không giả định các database đã đồng bộ. Không sửa V1/V2 đã áp dụng. Muốn đổi schema thì thêm file mới, **đặt version theo thời gian** để hai người thêm cùng lúc không trùng số: `V<yyyyMMdd>_<HHmm>__<mo_ta>.sql` (hai dấu gạch dưới trước phần mô tả), ví dụ `V20261110_1030__them_bang_khuyen_mai.sql`.
   - Dấu `_` trong phần version được Flyway hiểu như dấu chấm, nên thứ tự vẫn đúng và lớn hơn V1, V2.
   - Không đổi tên hay sửa file đã merge.
   - Nếu file của mình có thời gian nhỏ hơn một file đã được chạy ở nhánh khác, đổi tên file (chưa merge) sang thời gian mới. Không bật `spring.flyway.out-of-order` khi chưa hỏi nhóm.

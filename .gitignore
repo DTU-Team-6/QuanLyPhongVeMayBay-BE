@@ -3,3 +3,9 @@ build/
 .vscode/
 .env
 bin/
+
+# Dump schema cục bộ và file phát sinh khi thao tác SQL
+/schema.sql
+/schema-root.sql
+/schema-chi-doc.sql
+/v.dat_cho_id
