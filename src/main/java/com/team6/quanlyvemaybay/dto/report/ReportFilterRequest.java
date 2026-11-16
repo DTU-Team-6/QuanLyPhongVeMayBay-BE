@@ -5,6 +5,8 @@ import com.team6.quanlyvemaybay.validation.DateRangeValidatable;
 import com.team6.quanlyvemaybay.validation.ValidDateRange;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDate;
@@ -33,9 +35,11 @@ public class ReportFilterRequest implements DateRangeValidatable {
     private TieuChiThongKe groupBy = TieuChiThongKe.DAY;
 
     @Schema(description = "Lọc theo mã hãng hàng không (tuỳ chọn)", example = "VN")
+    @Size(max = 10, message = "Mã hãng không vượt quá 10 ký tự")
     private String maHang;
 
     @Schema(description = "Lọc theo ID nhân viên (tuỳ chọn)", example = "2")
+    @Positive(message = "ID nhân viên phải là số nguyên dương")
     private Long nhanVienId;
 
     @Schema(description = "Lọc theo trạng thái đơn đặt chỗ (mặc định DA_THANH_TOAN)", example = "DA_THANH_TOAN")

@@ -33,6 +33,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
@@ -82,6 +84,10 @@ class BaoCaoServiceTest {
                 eq("VN"),
                 isNull()
         )).thenReturn(List.of(vnRow));
+
+        when(veMayBayRepository.countDistinctBookingsForReport(
+                any(), any(), eq(TrangThaiDatCho.DA_THANH_TOAN), eq(TrangThaiVe.DA_THANH_TOAN), eq("VN"), isNull()
+        )).thenReturn(3L);
 
         ReportResponse response = baoCaoService.generateReport(filter);
 
@@ -256,5 +262,107 @@ class BaoCaoServiceTest {
         assertThat(response.items()).isEmpty();
         assertThat(response.summary().tongDoanhThu()).isEqualByComparingTo("0");
         assertThat(response.summary().tyLeLapDayPhanTram()).isEqualByComparingTo("0.00");
+    }
+
+    @Test
+    void generateReport_byAirline_shouldNotDoubleCountMixedAirlineBooking() {
+        ReportFilterRequest filter = reportFilter(LoaiBaoCao.THEO_HANG);
+        filter.setNhanVienId(2L);
+        AirlineAggregationRow vn = airlineRow("VN", "1000000", "1200000");
+        AirlineAggregationRow vj = airlineRow("VJ", "2000000", "2300000");
+        when(veMayBayRepository.aggregateByAirline(any(), any(), any(), any(), isNull(), eq(2L)))
+                .thenReturn(List.of(vn, vj));
+        when(veMayBayRepository.countDistinctBookingsForReport(
+                eq(LocalDateTime.of(2026, 11, 1, 0, 0)), eq(LocalDateTime.of(2026, 12, 1, 0, 0)),
+                eq(TrangThaiDatCho.DA_THANH_TOAN), eq(TrangThaiVe.DA_THANH_TOAN), isNull(), eq(2L)
+        )).thenReturn(1L);
+
+        ReportResponse response = baoCaoService.generateReport(filter);
+
+        assertThat(response.items()).hasSize(2);
+        assertThat(response.items()).allSatisfy(item -> assertThat(item.soDonDatCho()).isEqualTo(1L));
+        assertThat(response.summary().tongSoDonDatCho()).isEqualTo(1L);
+        assertThat(response.summary().tongSoVe()).isEqualTo(2L);
+        assertThat(response.summary().tongDoanhThu()).isEqualByComparingTo("3500000");
+        assertThat(response.summary().tongLoiNhuan()).isEqualByComparingTo("500000");
+    }
+
+    @Test
+    void generateReport_byStaffWithAirline_shouldOnlySumTicketsOfSelectedAirline() {
+        ReportFilterRequest filter = reportFilter(LoaiBaoCao.THEO_NHAN_VIEN);
+        filter.setMaHang(" vn ");
+        StaffAggregationRow row = mock(StaffAggregationRow.class);
+        when(row.getNhanVienId()).thenReturn(2L);
+        when(row.getMaNhanVien()).thenReturn("NV1");
+        when(row.getHoTenNhanVien()).thenReturn("Nhân viên 1");
+        when(row.getSoDonDatCho()).thenReturn(1L);
+        when(row.getTongGiaGoc()).thenReturn(new BigDecimal("1000000"));
+        when(row.getDoanhThu()).thenReturn(new BigDecimal("1200000"));
+        StaffTicketCountRow count = mock(StaffTicketCountRow.class);
+        when(count.getNhanVienId()).thenReturn(2L);
+        when(count.getSoVe()).thenReturn(1L);
+        when(veMayBayRepository.aggregateStaffRevenueByAirline(
+                any(), any(), eq(TrangThaiDatCho.DA_THANH_TOAN), eq(TrangThaiVe.DA_THANH_TOAN), isNull(), eq("VN")))
+                .thenReturn(List.of(row));
+        when(veMayBayRepository.countTicketsByStaff(any(), any(), any(), any(), isNull(), eq("VN")))
+                .thenReturn(List.of(count));
+
+        ReportResponse response = baoCaoService.generateReport(filter);
+
+        assertThat(response.summary().tongDoanhThu()).isEqualByComparingTo("1200000");
+        assertThat(response.summary().tongGiaGoc()).isEqualByComparingTo("1000000");
+        assertThat(response.summary().tongSoVe()).isEqualTo(1L);
+        assertThat(response.summary().tongSoDonDatCho()).isEqualTo(1L);
+        verifyNoInteractions(datChoRepository);
+    }
+
+    @Test
+    void generateReport_byTimeWithAirline_shouldUseMatchingTicketAmountsForEveryPeriod() {
+        TimeAggregationRow row = mock(TimeAggregationRow.class);
+        when(row.getNam()).thenReturn(2026);
+        when(row.getThang()).thenReturn(11);
+        when(row.getNgay()).thenReturn(9);
+        when(row.getSoDonDatCho()).thenReturn(1L);
+        when(row.getSoVeBanRa()).thenReturn(1L);
+        when(row.getTongGiaGoc()).thenReturn(new BigDecimal("1000000"));
+        when(row.getDoanhThu()).thenReturn(new BigDecimal("1200000"));
+        when(veMayBayRepository.aggregateTicketsByDay(any(), any(), any(), any(), isNull(), eq("VN")))
+                .thenReturn(List.of(row));
+        when(veMayBayRepository.aggregateTicketsByMonth(any(), any(), any(), any(), isNull(), eq("VN")))
+                .thenReturn(List.of(row));
+        when(veMayBayRepository.aggregateTicketsByYear(any(), any(), any(), any(), isNull(), eq("VN")))
+                .thenReturn(List.of(row));
+
+        for (TieuChiThongKe period : TieuChiThongKe.values()) {
+            ReportFilterRequest filter = reportFilter(LoaiBaoCao.THEO_THOI_GIAN);
+            filter.setGroupBy(period);
+            filter.setMaHang("vn");
+            ReportResponse response = baoCaoService.generateReport(filter);
+            assertThat(response.items()).hasSize(1);
+            assertThat(response.summary().tongDoanhThu()).isEqualByComparingTo("1200000");
+            assertThat(response.summary().tongGiaGoc()).isEqualByComparingTo("1000000");
+            assertThat(response.summary().tongSoVe()).isEqualTo(1L);
+            assertThat(response.summary().tongSoDonDatCho()).isEqualTo(1L);
+        }
+        verifyNoInteractions(datChoRepository);
+    }
+
+    private ReportFilterRequest reportFilter(LoaiBaoCao type) {
+        ReportFilterRequest filter = new ReportFilterRequest();
+        filter.setStartDate(LocalDate.of(2026, 11, 1));
+        filter.setEndDate(LocalDate.of(2026, 11, 30));
+        filter.setReportType(type);
+        return filter;
+    }
+
+    private AirlineAggregationRow airlineRow(String code, String cost, String revenue) {
+        AirlineAggregationRow row = mock(AirlineAggregationRow.class);
+        when(row.getMaHang()).thenReturn(code);
+        when(row.getTenHang()).thenReturn(code);
+        when(row.getSoDonDatCho()).thenReturn(1L);
+        when(row.getSoVeBanRa()).thenReturn(1L);
+        when(row.getTongGiaGoc()).thenReturn(new BigDecimal(cost));
+        when(row.getDoanhThu()).thenReturn(new BigDecimal(revenue));
+        return row;
     }
 }

@@ -4,6 +4,7 @@ import com.team6.quanlyvemaybay.validation.DateRangeValidatable;
 import com.team6.quanlyvemaybay.validation.ValidDateRange;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDate;
@@ -28,6 +29,7 @@ public class StatisticsFilterRequest implements DateRangeValidatable {
     private TieuChiThongKe period = TieuChiThongKe.DAY;
 
     @Schema(description = "Lọc theo mã hãng hàng không (tuỳ chọn)", example = "VN")
+    @Size(max = 10, message = "Mã hãng không vượt quá 10 ký tự")
     private String maHang;
 
     @Override
