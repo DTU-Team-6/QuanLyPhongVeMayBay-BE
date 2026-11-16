@@ -1,6 +1,7 @@
 package com.team6.quanlyvemaybay.controller;
 
 import com.team6.quanlyvemaybay.dto.common.ApiResponse;
+import com.team6.quanlyvemaybay.dto.flight.AirportSummaryDto;
 import com.team6.quanlyvemaybay.dto.common.PageResponse;
 import com.team6.quanlyvemaybay.dto.destination.CreateDestinationRequest;
 import com.team6.quanlyvemaybay.dto.destination.DestinationResponse;
@@ -11,6 +12,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Size;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,6 +21,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 /**
  * REST Controller cung cấp API lấy danh sách và thêm mới điểm đến du lịch (màn hình 99.7.3).
@@ -41,10 +45,12 @@ public class DiemDenController {
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<DestinationResponse>>> getDestinations(
             @Parameter(description = "Từ khóa tìm kiếm theo tên điểm đến, sân bay hoặc thành phố")
-            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false)
+            @Size(max = 100, message = "Từ khóa tìm kiếm không vượt quá 100 ký tự") String keyword,
 
             @Parameter(description = "Lọc theo mã IATA sân bay (ví dụ: DAD, HAN, SGN)")
-            @RequestParam(required = false) String maSanBay,
+            @RequestParam(required = false)
+            @Size(max = 10, message = "Mã sân bay không vượt quá 10 ký tự") String maSanBay,
 
             @Parameter(description = "Số trang bắt đầu từ 0")
             @RequestParam(defaultValue = "0")
@@ -62,6 +68,12 @@ public class DiemDenController {
                 ? "Không tìm thấy điểm đến phù hợp"
                 : "Lấy danh sách điểm đến thành công";
         return ResponseEntity.ok(ApiResponse.ok(result, message));
+    }
+
+    @Operation(summary = "Lấy danh mục sân bay cho điểm đến")
+    @GetMapping("/airports")
+    public ResponseEntity<ApiResponse<List<AirportSummaryDto>>> getAirports() {
+        return ResponseEntity.ok(ApiResponse.ok(diemDenService.getAirports(), "Lấy danh mục sân bay thành công"));
     }
 
     @Operation(

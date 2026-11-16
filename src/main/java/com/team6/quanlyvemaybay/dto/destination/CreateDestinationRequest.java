@@ -1,6 +1,7 @@
 package com.team6.quanlyvemaybay.dto.destination;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import com.team6.quanlyvemaybay.validation.ValidImageUrl;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
@@ -24,6 +25,7 @@ public record CreateDestinationRequest(
 
         @Schema(description = "Đường dẫn ảnh minh họa điểm đến", example = "/assets/destinations/caurong.jpg")
         @Size(max = 255, message = "Đường dẫn hình ảnh không vượt quá 255 ký tự")
+        @ValidImageUrl
         String hinhAnh
 ) {
 }

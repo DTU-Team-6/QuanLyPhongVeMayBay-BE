@@ -14,10 +14,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.InOrder;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 
 import java.util.List;
@@ -28,6 +30,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -94,7 +97,7 @@ class DiemDenServiceTest {
                 "  /assets/destinations/caurong.jpg  "
         );
 
-        when(sanBayRepository.findById("DAD")).thenReturn(Optional.of(dad));
+        when(sanBayRepository.findByIdForUpdate("DAD")).thenReturn(Optional.of(dad));
         when(diemDenRepository.existsDuplicateInAirport("Cầu Rồng Đà Nẵng", "DAD")).thenReturn(false);
         when(diemDenRepository.save(any(DiemDen.class))).thenAnswer(invocation -> {
             DiemDen entity = invocation.getArgument(0);
@@ -103,6 +106,11 @@ class DiemDenServiceTest {
         });
 
         DestinationResponse response = diemDenService.createDestination(request);
+
+        InOrder order = inOrder(sanBayRepository, diemDenRepository);
+        order.verify(sanBayRepository).findByIdForUpdate("DAD");
+        order.verify(diemDenRepository).existsDuplicateInAirport("Cầu Rồng Đà Nẵng", "DAD");
+        order.verify(diemDenRepository).save(any(DiemDen.class));
 
         ArgumentCaptor<DiemDen> captor = ArgumentCaptor.forClass(DiemDen.class);
         verify(diemDenRepository).save(captor.capture());
@@ -123,7 +131,7 @@ class DiemDenServiceTest {
                 null,
                 null
         );
-        when(sanBayRepository.findById("XYZ")).thenReturn(Optional.empty());
+        when(sanBayRepository.findByIdForUpdate("XYZ")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> diemDenService.createDestination(request))
                 .isInstanceOf(ResourceNotFoundException.class)
@@ -142,7 +150,7 @@ class DiemDenServiceTest {
                 null
         );
 
-        when(sanBayRepository.findById("DAD")).thenReturn(Optional.of(dad));
+        when(sanBayRepository.findByIdForUpdate("DAD")).thenReturn(Optional.of(dad));
         when(diemDenRepository.existsDuplicateInAirport("Bà Nà Hills & Cầu Vàng", "DAD")).thenReturn(true);
 
         assertThatThrownBy(() -> diemDenService.createDestination(request))
@@ -156,5 +164,19 @@ class DiemDenServiceTest {
                 });
 
         verify(diemDenRepository, never()).save(any());
+    }
+
+    @Test
+    void getAirports_shouldMapActualCatalogToPublicDto() {
+        when(sanBayRepository.findAll(Sort.by("thanhPho", "maSanBay")))
+                .thenReturn(List.of(new SanBay("DAD", "Sân bay Đà Nẵng", "Đà Nẵng", "Việt Nam")));
+
+        var airports = diemDenService.getAirports();
+
+        assertThat(airports).hasSize(1);
+        assertThat(airports.getFirst().maSanBay()).isEqualTo("DAD");
+        assertThat(airports.getFirst().tenSanBay()).isEqualTo("Sân bay Đà Nẵng");
+        assertThat(airports.getFirst().thanhPho()).isEqualTo("Đà Nẵng");
+        assertThat(airports.getFirst().quocGia()).isEqualTo("Việt Nam");
     }
 }

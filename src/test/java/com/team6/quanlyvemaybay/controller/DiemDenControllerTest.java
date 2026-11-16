@@ -1,6 +1,7 @@
 package com.team6.quanlyvemaybay.controller;
 
 import com.team6.quanlyvemaybay.dto.common.ErrorDetail;
+import com.team6.quanlyvemaybay.dto.flight.AirportSummaryDto;
 import com.team6.quanlyvemaybay.dto.common.PageResponse;
 import com.team6.quanlyvemaybay.dto.destination.DestinationResponse;
 import com.team6.quanlyvemaybay.exception.BusinessException;
@@ -222,5 +223,38 @@ class DiemDenControllerTest {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.code").value("INVALID_REQUEST_BODY"));
+    }
+
+    @Test
+    void getAirports_shouldReturnCatalogForSelect() throws Exception {
+        when(diemDenService.getAirports()).thenReturn(List.of(
+                new AirportSummaryDto("DAD", "Sân bay Đà Nẵng", "Đà Nẵng", "Việt Nam")));
+        mockMvc.perform(get("/api/v1/destinations/airports"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].maSanBay").value("DAD"))
+                .andExpect(jsonPath("$.data[0].quocGia").value("Việt Nam"));
+    }
+
+    @Test
+    void createDestination_shouldRejectUnsafeImageUrl() throws Exception {
+        mockMvc.perform(post("/api/v1/destinations")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"tenDiemDen":"Cầu Rồng", "maSanBay":"DAD", "hinhAnh":"javascript:alert(1)"}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.details[0].field").value("hinhAnh"));
+    }
+
+    @Test
+    void getDestinations_shouldRejectOversizedFiltersAndPageSize() throws Exception {
+        mockMvc.perform(get("/api/v1/destinations")
+                        .param("keyword", "a".repeat(101)).param("maSanBay", "A".repeat(11)).param("size", "101"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.details[*].field", hasItem("keyword")))
+                .andExpect(jsonPath("$.details[*].field", hasItem("maSanBay")))
+                .andExpect(jsonPath("$.details[*].field", hasItem("size")));
     }
 }
