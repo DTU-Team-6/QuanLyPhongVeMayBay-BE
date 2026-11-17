@@ -37,6 +37,7 @@
 
 | Method | Đường dẫn                        | Mục đích                                             |
 | ------ | -------------------------------- | ---------------------------------------------------- |
+| GET    | `/api/v1/auth/csrf`              | Khởi tạo cookie CSRF trước request thay đổi dữ liệu |
 | POST   | `/api/v1/auth/login`             | Đăng nhập                                            |
 | POST   | `/api/v1/auth/register`          | Đăng ký                                              |
 | GET    | `/api/v1/auth/me`                | Lấy thông tin người dùng hiện tại                   |
@@ -49,6 +50,7 @@
 
 - Các đường dẫn `/oauth2/...` và `/login/oauth2/...` **không** nằm dưới `/api/v1`.
 - Trang callback ở phía FE: **`/auth/callback`** (BE chuyển hướng người dùng về đây sau khi đăng nhập OAuth2).
+- Request đăng ký nhận `email`, `password`, `hoTen`, `soDienThoai`, `ngaySinh`, `gioiTinh`, `cmndPassport`, `quocTich`. Hai trường cuối được lưu vào các cột `khach_hang.cmnd_passport` và `khach_hang.quoc_tich` hiện có, không cần migration.
 
 ## Đã chốt: JSON báo lỗi
 

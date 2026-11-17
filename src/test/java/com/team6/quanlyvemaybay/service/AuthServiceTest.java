@@ -4,6 +4,7 @@ import com.team6.quanlyvemaybay.dto.auth.ChangePasswordRequest;
 import com.team6.quanlyvemaybay.dto.auth.LoginRequest;
 import com.team6.quanlyvemaybay.dto.auth.RegisterRequest;
 import com.team6.quanlyvemaybay.dto.auth.UpdatePersonalInfoRequest;
+import com.team6.quanlyvemaybay.entity.KhachHang;
 import com.team6.quanlyvemaybay.entity.NguoiDung;
 import com.team6.quanlyvemaybay.entity.enums.GioiTinh;
 import com.team6.quanlyvemaybay.entity.enums.VaiTro;
@@ -60,7 +61,9 @@ class AuthServiceTest {
                 " Nguyễn Văn A ",
                 null,
                 null,
-                null
+                null,
+                " 012345678901 ",
+                " Nhật Bản "
         );
         when(nguoiDungRepository.existsByTaiKhoanEmailIgnoreCase("user@example.com")).thenReturn(false);
         when(passwordEncoder.encode("password-123")).thenReturn("bcrypt-hash");
@@ -74,7 +77,10 @@ class AuthServiceTest {
 
         ArgumentCaptor<NguoiDung> userCaptor = ArgumentCaptor.forClass(NguoiDung.class);
         verify(nguoiDungRepository).saveAndFlush(userCaptor.capture());
-        verify(khachHangRepository).save(any());
+        ArgumentCaptor<KhachHang> customerCaptor = ArgumentCaptor.forClass(KhachHang.class);
+        verify(khachHangRepository).save(customerCaptor.capture());
+        assertEquals("012345678901", customerCaptor.getValue().getCmndPassport());
+        assertEquals("Nhật Bản", customerCaptor.getValue().getQuocTich());
         NguoiDung saved = userCaptor.getValue();
         assertEquals("user@example.com", saved.getTaiKhoanEmail());
         assertEquals("bcrypt-hash", saved.getMatKhau());
@@ -92,7 +98,7 @@ class AuthServiceTest {
         BusinessException exception = assertThrows(
                 BusinessException.class,
                 () -> authService.register(new RegisterRequest(
-                        "User@example.com", "password-123", "Nguyễn Văn A", null, null, null
+                        "User@example.com", "password-123", "Nguyễn Văn A", null, null, null, null, null
                 ))
         );
 
@@ -108,7 +114,7 @@ class AuthServiceTest {
         BusinessException exception = assertThrows(
                 BusinessException.class,
                 () -> authService.register(new RegisterRequest(
-                        "User@example.com", password, "Nguyễn Văn A", null, null, null
+                        "User@example.com", password, "Nguyễn Văn A", null, null, null, null, null
                 ))
         );
 

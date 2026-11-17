@@ -29,6 +29,13 @@ public record RegisterRequest(
         @Past(message = "Ngày sinh phải ở trong quá khứ")
         LocalDate ngaySinh,
 
-        GioiTinh gioiTinh
+        GioiTinh gioiTinh,
+
+        @NotBlank(message = "Số giấy tờ không được để trống")
+        @Size(max = 20, message = "Số giấy tờ không vượt quá 20 ký tự")
+        String cmndPassport,
+
+        @Size(max = 50, message = "Quốc tịch không vượt quá 50 ký tự")
+        String quocTich
 ) {
 }

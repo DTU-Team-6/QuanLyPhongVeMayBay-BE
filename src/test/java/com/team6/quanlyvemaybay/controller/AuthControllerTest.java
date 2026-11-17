@@ -48,7 +48,8 @@ class AuthControllerTest {
     @Test
     void registerReturnsCreatedUser() {
         RegisterRequest request = new RegisterRequest(
-                "user@example.com", "password-123", "Nguyễn Văn A", null, null, null
+                "user@example.com", "password-123", "Nguyễn Văn A", null, null, null,
+                "012345678901", "Việt Nam"
         );
         AuthUserResponse user = new AuthUserResponse(42L, "user@example.com", "Nguyễn Văn A", VaiTro.KHACH_HANG);
         when(authService.register(request)).thenReturn(user);

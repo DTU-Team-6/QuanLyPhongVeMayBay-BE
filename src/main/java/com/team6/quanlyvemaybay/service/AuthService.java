@@ -69,6 +69,12 @@ public class AuthService {
 
         KhachHang khachHang = new KhachHang();
         khachHang.setNguoiDung(nguoiDung);
+        khachHang.setCmndPassport(request.cmndPassport() != null ? request.cmndPassport().trim() : null);
+        khachHang.setQuocTich(
+                request.quocTich() == null || request.quocTich().isBlank()
+                        ? "Việt Nam"
+                        : request.quocTich().trim()
+        );
         khachHangRepository.save(khachHang);
         return toResponse(nguoiDung);
     }
