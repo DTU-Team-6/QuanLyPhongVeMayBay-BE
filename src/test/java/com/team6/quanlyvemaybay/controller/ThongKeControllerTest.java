@@ -102,4 +102,15 @@ class ThongKeControllerTest {
                 .andExpect(jsonPath("$.details[0].field").value("startDate"))
                 .andExpect(jsonPath("$.details[0].code").value("TYPE_MISMATCH"));
     }
+
+    @Test
+    void getStatistics_shouldRejectAirlineCodeLongerThanSchema() throws Exception {
+        mockMvc.perform(get("/api/v1/statistics")
+                        .param("startDate", "2026-11-01")
+                        .param("endDate", "2026-11-30")
+                        .param("maHang", "ABCDEFGHIJK"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.details[0].field").value("maHang"));
+    }
 }

@@ -8,6 +8,7 @@ import com.team6.quanlyvemaybay.entity.enums.TrangThaiDatCho;
 import com.team6.quanlyvemaybay.entity.enums.TrangThaiVe;
 import com.team6.quanlyvemaybay.repository.projection.AirlineAggregationRow;
 import com.team6.quanlyvemaybay.repository.projection.StaffTicketCountRow;
+import com.team6.quanlyvemaybay.repository.projection.StaffAggregationRow;
 import com.team6.quanlyvemaybay.repository.projection.TimeAggregationRow;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -22,6 +23,58 @@ import java.util.Optional;
  * Repository truy vấn thống kê vé bán ra và doanh thu chi tiết trên bảng ve_may_bay.
  */
 public interface VeMayBayRepository extends JpaRepository<VeMayBay, Long> {
+    /** Đếm đơn duy nhất trên toàn bộ tập vé khớp bộ lọc, tránh cộng trùng giữa các hãng. */
+    @Query("""
+            SELECT COUNT(DISTINCT dc.id)
+            FROM VeMayBay v
+            JOIN v.datCho dc
+            LEFT JOIN dc.nhanVien nv
+            WHERE dc.ngayDat >= :startDateTime
+              AND dc.ngayDat < :endExclusive
+              AND dc.trangThai = :trangThaiDatCho
+              AND v.trangThai = :trangThaiVe
+              AND (:maHang IS NULL OR v.hangVe.chuyenBay.hangHangKhong.maHang = :maHang)
+              AND (:nhanVienId IS NULL OR nv.nguoiDungId = :nhanVienId)
+            """)
+    long countDistinctBookingsForReport(
+            @Param("startDateTime") LocalDateTime startDateTime,
+            @Param("endExclusive") LocalDateTime endExclusive,
+            @Param("trangThaiDatCho") TrangThaiDatCho trangThaiDatCho,
+            @Param("trangThaiVe") TrangThaiVe trangThaiVe,
+            @Param("maHang") String maHang,
+            @Param("nhanVienId") Long nhanVienId
+    );
+
+    /** Khi lọc hãng, chỉ cộng tiền các vé của hãng đó trong đơn có nhiều hãng. */
+    @Query("""
+            SELECT nv.nguoiDungId AS nhanVienId,
+                   COALESCE(nv.maNhanVien, 'ONLINE') AS maNhanVien,
+                   COALESCE(nd.hoTen, 'Khách tự đặt Online') AS hoTenNhanVien,
+                   COUNT(DISTINCT dc.id) AS soDonDatCho,
+                   SUM(v.giaGoc) AS tongGiaGoc,
+                   SUM(v.tongGia) AS doanhThu
+            FROM VeMayBay v
+            JOIN v.datCho dc
+            LEFT JOIN dc.nhanVien nv
+            LEFT JOIN nv.nguoiDung nd
+            WHERE dc.ngayDat >= :startDateTime
+              AND dc.ngayDat < :endExclusive
+              AND dc.trangThai = :trangThaiDatCho
+              AND v.trangThai = :trangThaiVe
+              AND v.hangVe.chuyenBay.hangHangKhong.maHang = :maHang
+              AND (:nhanVienId IS NULL OR nv.nguoiDungId = :nhanVienId)
+            GROUP BY nv.nguoiDungId, nv.maNhanVien, nd.hoTen
+            ORDER BY SUM(v.tongGia) DESC
+            """)
+    List<StaffAggregationRow> aggregateStaffRevenueByAirline(
+            @Param("startDateTime") LocalDateTime startDateTime,
+            @Param("endExclusive") LocalDateTime endExclusive,
+            @Param("trangThaiDatCho") TrangThaiDatCho trangThaiDatCho,
+            @Param("trangThaiVe") TrangThaiVe trangThaiVe,
+            @Param("nhanVienId") Long nhanVienId,
+            @Param("maHang") String maHang
+    );
+
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select v from VeMayBay v join fetch v.datCho where v.id = :id")

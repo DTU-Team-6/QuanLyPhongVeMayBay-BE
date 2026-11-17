@@ -77,7 +77,12 @@ public class BaoCaoService {
             case THEO_THOI_GIAN -> buildTimeReport(startDateTime, endExclusive, groupBy, trangThaiDatCho, trangThaiVe, nhanVienId, maHang);
         };
 
-        ReportSummaryDto summary = buildReportSummary(items);
+        // Một đơn nhiều hãng có mặt ở nhiều dòng; KPI phải đếm DISTINCT trên toàn tập lọc.
+        Long uniqueBookingCount = filter.getReportType() == LoaiBaoCao.THEO_HANG && !items.isEmpty()
+                ? veMayBayRepository.countDistinctBookingsForReport(
+                        startDateTime, endExclusive, trangThaiDatCho, trangThaiVe, maHang, nhanVienId)
+                : null;
+        ReportSummaryDto summary = buildReportSummary(items, uniqueBookingCount);
         return new ReportResponse(
                 filter.getStartDate(),
                 filter.getEndDate(),
@@ -198,9 +203,10 @@ public class BaoCaoService {
             Long nhanVienId,
             String maHang
     ) {
-        List<StaffAggregationRow> staffRows = datChoRepository.aggregateByStaff(
-                startDateTime, endExclusive, trangThaiDatCho, nhanVienId, maHang
-        );
+        List<StaffAggregationRow> staffRows = maHang == null
+                ? datChoRepository.aggregateByStaff(startDateTime, endExclusive, trangThaiDatCho, nhanVienId, null)
+                : veMayBayRepository.aggregateStaffRevenueByAirline(
+                        startDateTime, endExclusive, trangThaiDatCho, trangThaiVe, nhanVienId, maHang);
         if (staffRows.isEmpty()) {
             return List.of();
         }
@@ -240,23 +246,20 @@ public class BaoCaoService {
             Long nhanVienId,
             String maHang
     ) {
-        List<TimeAggregationRow> bookingRows = queryBookingsByPeriod(
-                startDateTime, endExclusive, groupBy, trangThaiDatCho, nhanVienId, maHang
-        );
-        if (bookingRows.isEmpty()) {
-            return List.of();
-        }
-
         List<TimeAggregationRow> ticketRows = queryTicketsByPeriod(
                 startDateTime, endExclusive, groupBy, trangThaiDatCho, trangThaiVe, nhanVienId, maHang
         );
+        // Chỉ các vé của hãng được chọn mới đóng góp doanh thu, giá gốc và số đơn.
+        List<TimeAggregationRow> amountRows = maHang == null
+                ? queryBookingsByPeriod(startDateTime, endExclusive, groupBy, trangThaiDatCho, nhanVienId, null)
+                : ticketRows;
         Map<String, Long> ticketCountsByPeriod = new HashMap<>();
         for (TimeAggregationRow row : ticketRows) {
             String key = formatPeriodKey(row.getNam(), row.getThang(), row.getNgay(), groupBy);
             ticketCountsByPeriod.put(key, zeroIfNull(row.getSoVeBanRa()));
         }
 
-        return bookingRows.stream()
+        return amountRows.stream()
                 .map(row -> {
                     String key = formatPeriodKey(row.getNam(), row.getThang(), row.getNgay(), groupBy);
                     BigDecimal giaGoc = zeroIfNull(row.getTongGiaGoc());
@@ -318,7 +321,7 @@ public class BaoCaoService {
         };
     }
 
-    private ReportSummaryDto buildReportSummary(List<ReportItemDto> items) {
+    private ReportSummaryDto buildReportSummary(List<ReportItemDto> items, Long uniqueBookingCount) {
         long totalBookings = 0L;
         long totalTickets = 0L;
         BigDecimal totalCost = BigDecimal.ZERO;
@@ -332,7 +335,7 @@ public class BaoCaoService {
         }
 
         return new ReportSummaryDto(
-                totalBookings,
+                uniqueBookingCount != null ? uniqueBookingCount : totalBookings,
                 totalTickets,
                 totalCost,
                 totalRevenue,

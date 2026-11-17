@@ -168,4 +168,18 @@ class BaoCaoControllerTest {
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
                 .andExpect(jsonPath("$.details[0].field").value("startDate"));
     }
+
+    @Test
+    void createReport_shouldRejectInvalidOptionalFilters() throws Exception {
+        mockMvc.perform(post("/api/v1/reports")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"startDate":"2026-11-01", "endDate":"2026-11-30", "reportType":"THEO_NHAN_VIEN",
+                                 "nhanVienId":0, "maHang":"ABCDEFGHIJK"}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.details[*].field", hasItem("nhanVienId")))
+                .andExpect(jsonPath("$.details[*].field", hasItem("maHang")));
+    }
 }
