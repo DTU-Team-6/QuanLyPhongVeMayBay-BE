@@ -34,6 +34,7 @@
 - Dùng các cột `khach_hang.cmnd_passport` và `khach_hang.quoc_tich` hiện có; không sửa migration và không thêm dependency.
 - OAuth: không tự liên kết khi email trùng; tài khoản mới tạo khách hàng bằng dữ liệu nhà cung cấp, quốc tịch mặc định `Việt Nam`, chưa kiểm tra tuổi nếu thiếu ngày sinh.
 - OAuth sử dụng cookie phiên, chưa hỗ trợ lựa chọn ghi nhớ; cần bật `APP_OAUTH2_ENABLED` và cấu hình thông tin nhà cung cấp ở BE.
+- Database kiểm thử đã có bảng `lien_ket_oauth` cũ tham chiếu `tai_khoan`; người dùng đồng ý tạo bảng mới `dinh_danh_oauth` tham chiếu `nguoi_dung`, không sửa bảng cũ.
 
 ## Lỗi đang gặp (nếu có)
 

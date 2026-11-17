@@ -10,7 +10,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "lien_ket_oauth")
+@Table(name = "dinh_danh_oauth")
 public class LienKetOAuth {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
