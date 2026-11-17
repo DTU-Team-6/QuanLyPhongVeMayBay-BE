@@ -113,6 +113,46 @@ class ChuyenBayServiceTest {
     }
 
     @Test
+    void search_shouldKeepDelayedFlightFromTopCheapAndExcludeCanceledStatus() {
+        HangHangKhong airline = new HangHangKhong("VN", "Vietnam Airlines", null, TrangThaiHang.HOAT_DONG);
+        ChuyenBay delayedFlight = new ChuyenBay();
+        delayedFlight.setId(12L);
+        delayedFlight.setMaChuyenBay("VN120");
+        delayedFlight.setHangHangKhong(airline);
+        delayedFlight.setSanBayDi(new SanBay("SGN", "Tân Sơn Nhất", "TP Hồ Chí Minh", "Việt Nam"));
+        delayedFlight.setSanBayDen(new SanBay("HAN", "Nội Bài", "Hà Nội", "Việt Nam"));
+        delayedFlight.setThoiGianKhoiHanh(LocalDateTime.of(2026, 11, 15, 14, 0));
+        delayedFlight.setThoiGianHaCanh(LocalDateTime.of(2026, 11, 15, 16, 0));
+        delayedFlight.setTrangThai(TrangThaiChuyenBay.DELAY);
+        HangVeChuyenBay fare = new HangVeChuyenBay();
+        fare.setId(24L);
+        fare.setChuyenBay(delayedFlight);
+        fare.setLoaiKhoang(LoaiKhoang.PHO_THONG);
+        fare.setGiaBan(new BigDecimal("1000000"));
+        fare.setThuePhi(new BigDecimal("200000"));
+        fare.setSoGheTrong(20);
+        when(hangVeChuyenBayRepository.findTopCheapestAvailableFlights(
+                eq(TrangThaiChuyenBay.DA_HUY), eq(TrangThaiHang.HOAT_DONG), any(), any(Pageable.class)
+        )).thenReturn(List.of(fare));
+        when(hangVeChuyenBayRepository.findForSearch(
+                "SGN", "HAN", LocalDateTime.of(2026, 11, 15, 0, 0), LocalDateTime.of(2026, 11, 16, 0, 0),
+                TrangThaiChuyenBay.DA_HUY, TrangThaiHang.HOAT_DONG, 1, null
+        )).thenReturn(List.of(fare));
+
+        var topFlights = chuyenBayService.getTopCheapFlights(10);
+        var searchResults = chuyenBayService.search("SGN", "HAN", java.time.LocalDate.of(2026, 11, 15), 1, 0, null);
+
+        assertThat(topFlights).hasSize(1);
+        assertThat(topFlights.getFirst().trangThai()).isEqualTo(TrangThaiChuyenBay.DELAY);
+        assertThat(searchResults).hasSize(1);
+        assertThat(searchResults.getFirst().chuyenBayId()).isEqualTo(topFlights.getFirst().chuyenBayId());
+        assertThat(searchResults.getFirst().tongGiaVe()).isEqualByComparingTo(topFlights.getFirst().tongGiaVe());
+        verify(hangVeChuyenBayRepository).findForSearch(
+                "SGN", "HAN", LocalDateTime.of(2026, 11, 15, 0, 0), LocalDateTime.of(2026, 11, 16, 0, 0),
+                TrangThaiChuyenBay.DA_HUY, TrangThaiHang.HOAT_DONG, 1, null
+        );
+    }
+    @Test
     void getTopCheapFlights_shouldReturnEmptyListWhenNoFlightsAvailable() {
         when(hangVeChuyenBayRepository.findTopCheapestAvailableFlights(
                 any(), any(), any(), any(Pageable.class)

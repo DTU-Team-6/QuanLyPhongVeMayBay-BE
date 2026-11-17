@@ -31,7 +31,7 @@ public interface HangVeChuyenBayRepository extends JpaRepository<HangVeChuyenBay
             JOIN FETCH cb.sanBayDen den
             WHERE di.maSanBay = :maDi AND den.maSanBay = :maDen
               AND cb.thoiGianKhoiHanh >= :tu AND cb.thoiGianKhoiHanh < :denGio
-              AND cb.trangThai = :trangThai AND h.trangThai = :trangThaiHang
+              AND cb.trangThai <> :trangThaiHuy AND h.trangThai = :trangThaiHang
               AND hv.soGheTrong >= :soCho
               AND (:maHang IS NULL OR h.maHang = :maHang)
             ORDER BY cb.thoiGianKhoiHanh ASC, hv.giaBan ASC
@@ -39,7 +39,7 @@ public interface HangVeChuyenBayRepository extends JpaRepository<HangVeChuyenBay
     List<HangVeChuyenBay> findForSearch(
             @Param("maDi") String maDi, @Param("maDen") String maDen,
             @Param("tu") LocalDateTime tu, @Param("denGio") LocalDateTime denGio,
-            @Param("trangThai") TrangThaiChuyenBay trangThai,
+            @Param("trangThaiHuy") TrangThaiChuyenBay trangThaiHuy,
             @Param("trangThaiHang") TrangThaiHang trangThaiHang,
             @Param("soCho") int soCho, @Param("maHang") String maHang);
 

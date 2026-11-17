@@ -55,7 +55,7 @@ public class ChuyenBayService {
         }
         return hangVeChuyenBayRepository.findForSearch(maDi.toUpperCase(Locale.ROOT), maDen.toUpperCase(Locale.ROOT),
                         ngayDi.atStartOfDay(), ngayDi.plusDays(1).atStartOfDay(),
-                        TrangThaiChuyenBay.DUNG_GIO, TrangThaiHang.HOAT_DONG, soCho,
+                        TrangThaiChuyenBay.DA_HUY, TrangThaiHang.HOAT_DONG, soCho,
                         maHang == null ? null : maHang.toUpperCase(Locale.ROOT))
                 .stream().filter(hv -> hv.getChuyenBay().getThoiGianKhoiHanh().isAfter(LocalDateTime.now(clock)))
                 .map(this::toSearchResponse).toList();
