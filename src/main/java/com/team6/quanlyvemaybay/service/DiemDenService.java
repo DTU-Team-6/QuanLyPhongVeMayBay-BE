@@ -1,6 +1,7 @@
 package com.team6.quanlyvemaybay.service;
 
 import com.team6.quanlyvemaybay.dto.common.ErrorDetail;
+import com.team6.quanlyvemaybay.dto.flight.AirportSummaryDto;
 import com.team6.quanlyvemaybay.dto.common.PageResponse;
 import com.team6.quanlyvemaybay.dto.destination.CreateDestinationRequest;
 import com.team6.quanlyvemaybay.dto.destination.DestinationResponse;
@@ -13,6 +14,7 @@ import com.team6.quanlyvemaybay.repository.SanBayRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -58,7 +60,7 @@ public class DiemDenService {
         String normalizedName = request.tenDiemDen().trim().replaceAll("\\s+", " ");
         String normalizedAirport = request.maSanBay().trim().toUpperCase(Locale.ROOT);
 
-        SanBay sanBay = sanBayRepository.findById(normalizedAirport)
+        SanBay sanBay = sanBayRepository.findByIdForUpdate(normalizedAirport)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "AIRPORT_NOT_FOUND",
                         "Không tìm thấy sân bay với mã: " + normalizedAirport
@@ -85,6 +87,15 @@ public class DiemDenService {
 
         DiemDen saved = diemDenRepository.save(diemDen);
         return toResponse(saved);
+    }
+
+    /** Danh mục thực từ database, dùng chung cho bộ lọc và lựa chọn sân bay trong form. */
+    @Transactional(readOnly = true)
+    public List<AirportSummaryDto> getAirports() {
+        return sanBayRepository.findAll(Sort.by("thanhPho", "maSanBay")).stream()
+                .map(sanBay -> new AirportSummaryDto(sanBay.getMaSanBay(), sanBay.getTenSanBay(),
+                        sanBay.getThanhPho(), sanBay.getQuocGia()))
+                .toList();
     }
 
     private DestinationResponse toResponse(DiemDen diemDen) {
