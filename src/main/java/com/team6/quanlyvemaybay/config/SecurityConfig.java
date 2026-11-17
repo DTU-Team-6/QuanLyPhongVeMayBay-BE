@@ -6,6 +6,7 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -17,11 +18,13 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
 import org.springframework.security.oauth2.server.resource.web.DefaultBearerTokenResolver;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.context.NullSecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -47,6 +50,8 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             ObjectMapper objectMapper,
+            ObjectProvider<ClientRegistrationRepository> clientRegistrations,
+            ObjectProvider<OAuthLoginHandler> oauthLoginHandler,
             @Value("${app.auth.cookie-secure:false}") boolean cookieSecure
     ) throws Exception {
         CookieCsrfTokenRepository csrfRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
@@ -59,10 +64,12 @@ public class SecurityConfig {
                         .csrfTokenRepository(csrfRepository)
                         .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
                 )
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .securityContext(context -> context.securityContextRepository(new NullSecurityContextRepository()))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/api/v1/auth/csrf", "/api/v1/auth/register", "/api/v1/auth/login",
                                 "/api/v1/auth/logout", "/api/v1/auth/refresh").permitAll()
+                        .requestMatchers("/oauth2/authorization/**", "/login/oauth2/code/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/auth/me").authenticated()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers(HttpMethod.GET,
@@ -107,6 +114,13 @@ public class SecurityConfig {
                 .formLogin(form -> form.disable())
                 .logout(logout -> logout.disable());
 
+        ClientRegistrationRepository registrations = clientRegistrations.getIfAvailable();
+        OAuthLoginHandler handler = oauthLoginHandler.getIfAvailable();
+        if (registrations != null && handler != null) {
+            http.oauth2Login(oauth -> oauth.clientRegistrationRepository(registrations)
+                    .successHandler(handler.success()).failureHandler(handler.failure()));
+        }
+
         return http.build();
     }
 
@@ -146,6 +160,9 @@ public class SecurityConfig {
         // Các endpoint riêng tư vẫn xác thực cookie như bình thường; CSRF vẫn kiểm tra mọi POST.
         private boolean isAnonymousEndpoint(HttpServletRequest request) {
             String path = request.getRequestURI().substring(request.getContextPath().length());
+            if (path.startsWith("/oauth2/authorization/") || path.startsWith("/login/oauth2/code/")) {
+                return true;
+            }
             if (List.of("/api/v1/auth/csrf", "/api/v1/auth/login", "/api/v1/auth/register",
                     "/api/v1/auth/logout", "/api/v1/auth/refresh").contains(path)) {
                 return true;

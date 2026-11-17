@@ -4,6 +4,14 @@ Các endpoint dùng tiền tố `/api/v1/auth`. Token không được trả tron
 
 Trước khi dùng, áp dụng thủ công migration `src/main/resources/db/migration/V20261117_1331__them_phien_lam_moi.sql` vào database phù hợp. BE hiện chưa cấu hình Flyway hoặc tự chạy migration.
 
+## Đăng nhập Google và Facebook
+
+- Để bật OAuth, áp dụng thủ công thêm migration `src/main/resources/db/migration/V20261117_1552__them_lien_ket_oauth.sql` vào database được chọn. Đặt `APP_OAUTH2_ENABLED=true`, `APP_FRONTEND_URL` và cặp `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` hoặc `FACEBOOK_CLIENT_ID`/`FACEBOOK_CLIENT_SECRET` trong môi trường BE. Không đặt secret ở FE hoặc commit vào repo.
+- Đăng ký URI callback BE với nhà cung cấp: `<địa chỉ BE>/login/oauth2/code/google` hoặc `<địa chỉ BE>/login/oauth2/code/facebook`. Cấu hình URL công khai HTTPS và các yêu cầu của nhà cung cấp phù hợp với môi trường.
+- FE chuyển cả trang đến `/oauth2/authorization/google` hoặc `/oauth2/authorization/facebook`. BE xác thực qua OAuth2 rồi chuyển về `<APP_FRONTEND_URL>/auth/callback`; nếu có nhiều origin, dùng origin đầu tiên.
+- Thành công cấp cookie phiên HttpOnly và FE gọi `/api/v1/auth/me`. OAuth hiện không áp dụng lựa chọn “Ghi nhớ đăng nhập”. Thất bại chuyển về callback với `error` là `OAUTH_FAILED`, `OAUTH_PROFILE_INVALID`, `EMAIL_ALREADY_REGISTERED` hoặc `ACCOUNT_INACTIVE`.
+- Nhận diện theo nhà cung cấp và mã định danh, không tự liên kết khi email đã tồn tại. Người mới cần email và họ tên; Google phải xác nhận email. Tài khoản mới là khách hàng, không có mật khẩu, quốc tịch mặc định `Việt Nam`, chưa kiểm tra tuổi nếu thiếu ngày sinh. Facebook có thể không cung cấp email, khi đó đăng nhập thất bại.
+
 ## Luồng gọi từ frontend
 
 1. Gọi `GET /api/v1/auth/csrf`, nhận cookie `XSRF-TOKEN`.

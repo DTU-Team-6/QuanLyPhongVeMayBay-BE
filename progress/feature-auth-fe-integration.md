@@ -16,8 +16,8 @@
 
 ## Đang dở (chưa commit hoặc chưa chạy được)
 
-- Đang triển khai OAuth Google/Facebook: tạo migration bảng liên kết và logic tài khoản; chưa kết nối OAuth Client hoặc áp dụng migration.
-- `OAuthAccountServiceTest` và `./gradlew build -x test` thành công.
+- Đang triển khai OAuth Google/Facebook: đã tạo migration, logic tài khoản và luồng OAuth Client; chưa áp dụng migration hoặc kiểm tra với nhà cung cấp thật.
+- Các test `OAuthAccountServiceTest`, `OAuthLoginHandlerTest`, `OAuthSecurityTest`, `AuthSecurityTest` và `./gradlew build -x test` thành công.
 - Người dùng đã áp dụng migration vào database kiểm thử và khởi động lại BE. Kiểm tra API thật: cookie phiên/có thời hạn, rotation, đăng xuất, dùng lại token và hai refresh đồng thời đều đạt; dùng lại token thu hồi token mới.
 - Đã tạo một tài khoản giả trong database kiểm thử; không xoá dữ liệu. Chưa chờ hết hạn thực tế 7 ngày.
 - Sửa tài liệu database cho khớp cấu hình thực tế: repo chưa dùng Flyway và không tự chạy SQL khởi tạo.
@@ -33,6 +33,7 @@
 - Trường CMND/Passport được kiểm tra bắt buộc và giới hạn 20 ký tự; quốc tịch tối đa 50 ký tự, mặc định `Việt Nam`.
 - Dùng các cột `khach_hang.cmnd_passport` và `khach_hang.quoc_tich` hiện có; không sửa migration và không thêm dependency.
 - OAuth: không tự liên kết khi email trùng; tài khoản mới tạo khách hàng bằng dữ liệu nhà cung cấp, quốc tịch mặc định `Việt Nam`, chưa kiểm tra tuổi nếu thiếu ngày sinh.
+- OAuth sử dụng cookie phiên, chưa hỗ trợ lựa chọn ghi nhớ; cần bật `APP_OAUTH2_ENABLED` và cấu hình thông tin nhà cung cấp ở BE.
 
 ## Lỗi đang gặp (nếu có)
 
