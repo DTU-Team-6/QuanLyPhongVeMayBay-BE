@@ -12,15 +12,18 @@
 - Cập nhật tài liệu endpoint CSRF và hợp đồng request đăng ký.
 - Kiểm tra schema hiện có; không cần migration.
 - `./gradlew test --tests 'com.team6.quanlyvemaybay.service.AuthServiceTest' --tests 'com.team6.quanlyvemaybay.controller.AuthControllerTest'` thành công.
+- Triển khai refresh token, rotation, phát hiện dùng lại và thu hồi trong commit `ddde9f1`.
 
 ## Đang dở (chưa commit hoặc chưa chạy được)
 
-- Đã triển khai refresh token, rotation, phát hiện dùng lại và thu hồi; migration mới cần được áp dụng thủ công trước khi kiểm tra với database thật.
+- Người dùng đã áp dụng migration vào database kiểm thử và khởi động lại BE. Kiểm tra API thật: cookie phiên/có thời hạn, rotation, đăng xuất, dùng lại token và hai refresh đồng thời đều đạt; dùng lại token thu hồi token mới.
+- Đã tạo một tài khoản giả trong database kiểm thử; không xoá dữ liệu. Chưa chờ hết hạn thực tế 7 ngày.
+- Sửa tài liệu database cho khớp cấu hình thực tế: repo chưa dùng Flyway và không tự chạy SQL khởi tạo.
 - Chưa xác minh tích hợp FE/BE.
 
 ## Việc tiếp theo (theo thứ tự)
 
-1. Áp dụng migration vào database kiểm thử đã được xác nhận, sau đó kiểm tra tích hợp FE/BE.
+1. Kiểm tra tích hợp FE/BE trên giao diện và đồng bộ nhiều tab.
 2. Tạo Pull Request vào `develop` sau khi đồng bộ nhánh và chạy build theo quy trình.
 
 ## Quyết định đã chốt và lưu ý
