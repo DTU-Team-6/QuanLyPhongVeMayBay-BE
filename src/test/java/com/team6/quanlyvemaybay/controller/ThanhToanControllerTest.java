@@ -7,7 +7,6 @@ import com.team6.quanlyvemaybay.dto.payment.PaymentCallbackResponse;
 import com.team6.quanlyvemaybay.dto.payment.PaymentUrlResponse;
 import com.team6.quanlyvemaybay.dto.payment.TransactionHistoryDto;
 import com.team6.quanlyvemaybay.entity.enums.PhuongThucThanhToan;
-import com.team6.quanlyvemaybay.entity.enums.TrangThaiDatCho;
 import com.team6.quanlyvemaybay.entity.enums.TrangThaiThanhToan;
 import com.team6.quanlyvemaybay.exception.GlobalExceptionHandler;
 import com.team6.quanlyvemaybay.service.PayPalService;
@@ -26,7 +25,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
