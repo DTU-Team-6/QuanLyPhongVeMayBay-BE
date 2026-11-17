@@ -15,11 +15,13 @@
 
 ## Đang dở (chưa commit hoặc chưa chạy được)
 
-- Không có.
+- Đã triển khai refresh token, rotation, phát hiện dùng lại và thu hồi; migration mới cần được áp dụng thủ công trước khi kiểm tra với database thật.
+- Chưa xác minh tích hợp FE/BE.
 
 ## Việc tiếp theo (theo thứ tự)
 
-1. Tạo Pull Request vào `develop` sau khi đồng bộ nhánh và chạy build theo quy trình.
+1. Áp dụng migration vào database kiểm thử đã được xác nhận, sau đó kiểm tra tích hợp FE/BE.
+2. Tạo Pull Request vào `develop` sau khi đồng bộ nhánh và chạy build theo quy trình.
 
 ## Quyết định đã chốt và lưu ý
 
@@ -28,4 +30,4 @@
 
 ## Lỗi đang gặp (nếu có)
 
-- Không có.
+- Các test `PhienLamMoiServiceTest`, `AuthServiceTest`, `AuthControllerTest`, `AuthSecurityTest` thành công; `./gradlew build -x test` thành công. Chưa chạy toàn bộ test.

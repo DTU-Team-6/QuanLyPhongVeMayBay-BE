@@ -40,6 +40,8 @@ class AuthServiceTest {
     private PasswordEncoder passwordEncoder;
     @Mock
     private JwtTokenService jwtTokenService;
+    @Mock
+    private PhienLamMoiService phienLamMoiService;
 
     private AuthService authService;
 
@@ -49,7 +51,8 @@ class AuthServiceTest {
                 nguoiDungRepository,
                 khachHangRepository,
                 passwordEncoder,
-                jwtTokenService
+                jwtTokenService,
+                phienLamMoiService
         );
     }
 
@@ -201,6 +204,7 @@ class AuthServiceTest {
 
         assertEquals("new-bcrypt-hash", user.getMatKhau());
         verify(nguoiDungRepository).save(user);
+        verify(phienLamMoiService).thuHoiNguoiDung(42L);
     }
 
     @Test

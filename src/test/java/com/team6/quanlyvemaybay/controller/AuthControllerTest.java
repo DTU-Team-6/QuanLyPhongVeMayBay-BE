@@ -9,6 +9,7 @@ import com.team6.quanlyvemaybay.dto.auth.UpdatePersonalInfoRequest;
 import com.team6.quanlyvemaybay.entity.enums.GioiTinh;
 import com.team6.quanlyvemaybay.entity.enums.VaiTro;
 import com.team6.quanlyvemaybay.service.AuthService;
+import com.team6.quanlyvemaybay.service.PhienLamMoiService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
@@ -16,6 +17,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.web.csrf.CsrfToken;
 
 import java.time.LocalDate;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -27,12 +31,15 @@ import static org.mockito.Mockito.when;
 class AuthControllerTest {
 
     private AuthService authService;
+    private PhienLamMoiService phienLamMoiService;
     private AuthController controller;
+    private final Instant now = Instant.parse("2026-11-17T00:00:00Z");
 
     @BeforeEach
     void setUp() {
         authService = mock(AuthService.class);
-        controller = new AuthController(authService, false);
+        phienLamMoiService = mock(PhienLamMoiService.class);
+        controller = new AuthController(authService, phienLamMoiService, false, Clock.fixed(now, ZoneOffset.UTC));
     }
 
     @Test
@@ -62,9 +69,11 @@ class AuthControllerTest {
 
     @Test
     void loginSetsHttpOnlyAccessCookieAndDoesNotReturnTokenInBody() {
-        LoginRequest request = new LoginRequest("user@example.com", "password-123");
+        LoginRequest request = new LoginRequest("user@example.com", "password-123", true);
         AuthUserResponse user = new AuthUserResponse(42L, "user@example.com", "Nguyễn Văn A", VaiTro.KHACH_HANG);
         when(authService.login(request)).thenReturn(new AuthService.LoginResult(user, "signed-token"));
+        when(phienLamMoiService.tao(42L, true))
+                .thenReturn(new PhienLamMoiService.KetQua("refresh-token", null, now.plusSeconds(604800), true));
 
         var response = controller.login(request);
 
@@ -75,7 +84,34 @@ class AuthControllerTest {
         assertTrue(cookie.contains("HttpOnly"));
         assertTrue(cookie.contains("SameSite=Lax"));
         assertTrue(cookie.contains("Max-Age=900"));
+        assertTrue(response.getHeaders().get(HttpHeaders.SET_COOKIE).get(1).contains("Max-Age=604800"));
         assertFalse(response.getBody().toString().contains("signed-token"));
+    }
+
+    @Test
+    void loginWithoutRememberUsesSessionCookies() {
+        LoginRequest request = new LoginRequest("user@example.com", "password-123");
+        AuthUserResponse user = new AuthUserResponse(42L, "user@example.com", "Nguyễn Văn A", VaiTro.KHACH_HANG);
+        when(authService.login(request)).thenReturn(new AuthService.LoginResult(user, "signed-token"));
+        when(phienLamMoiService.tao(42L, false))
+                .thenReturn(new PhienLamMoiService.KetQua("refresh-token", null, now.plusSeconds(604800), false));
+
+        var cookies = controller.login(request).getHeaders().get(HttpHeaders.SET_COOKIE);
+
+        assertEquals(2, cookies.size());
+        assertTrue(cookies.stream().allMatch(cookie -> !cookie.contains("Max-Age") && cookie.contains("HttpOnly")));
+    }
+
+    @Test
+    void refreshKeepsTheOriginalAbsoluteExpiry() {
+        when(phienLamMoiService.lamMoi("old-refresh"))
+                .thenReturn(new PhienLamMoiService.KetQua("new-refresh", "new-access", now.plusSeconds(60), true));
+
+        var cookies = controller.refresh("old-refresh").getHeaders().get(HttpHeaders.SET_COOKIE);
+
+        assertTrue(cookies.get(0).contains("access_token=new-access"));
+        assertTrue(cookies.get(1).contains("refresh_token=new-refresh"));
+        assertTrue(cookies.get(1).contains("Max-Age=60"));
     }
 
     @Test

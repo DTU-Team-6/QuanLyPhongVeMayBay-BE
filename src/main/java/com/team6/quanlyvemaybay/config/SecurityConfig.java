@@ -62,7 +62,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/api/v1/auth/csrf", "/api/v1/auth/register", "/api/v1/auth/login",
-                                "/api/v1/auth/logout").permitAll()
+                                "/api/v1/auth/logout", "/api/v1/auth/refresh").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/auth/me").authenticated()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers(HttpMethod.GET,
@@ -147,7 +147,7 @@ public class SecurityConfig {
         private boolean isAnonymousEndpoint(HttpServletRequest request) {
             String path = request.getRequestURI().substring(request.getContextPath().length());
             if (List.of("/api/v1/auth/csrf", "/api/v1/auth/login", "/api/v1/auth/register",
-                    "/api/v1/auth/logout").contains(path)) {
+                    "/api/v1/auth/logout", "/api/v1/auth/refresh").contains(path)) {
                 return true;
             }
             return "GET".equals(request.getMethod()) && (

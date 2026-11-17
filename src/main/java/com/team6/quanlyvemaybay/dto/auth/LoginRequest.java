@@ -12,6 +12,11 @@ public record LoginRequest(
 
         @NotBlank(message = "Mật khẩu không được để trống")
         @Size(max = 72, message = "Mật khẩu không vượt quá 72 ký tự")
-        String password
+        String password,
+
+        Boolean rememberMe
 ) {
+    public LoginRequest(String email, String password) {
+        this(email, password, false);
+    }
 }

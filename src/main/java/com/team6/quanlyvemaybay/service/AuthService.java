@@ -30,17 +30,20 @@ public class AuthService {
     private final KhachHangRepository khachHangRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenService jwtTokenService;
+    private final PhienLamMoiService phienLamMoiService;
 
     public AuthService(
             NguoiDungRepository nguoiDungRepository,
             KhachHangRepository khachHangRepository,
             PasswordEncoder passwordEncoder,
-            JwtTokenService jwtTokenService
+            JwtTokenService jwtTokenService,
+            PhienLamMoiService phienLamMoiService
     ) {
         this.nguoiDungRepository = nguoiDungRepository;
         this.khachHangRepository = khachHangRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenService = jwtTokenService;
+        this.phienLamMoiService = phienLamMoiService;
     }
 
     @Transactional
@@ -130,6 +133,7 @@ public class AuthService {
         }
         nguoiDung.setMatKhau(passwordEncoder.encode(request.newPassword()));
         nguoiDungRepository.save(nguoiDung);
+        phienLamMoiService.thuHoiNguoiDung(userId);
     }
 
     private NguoiDung findActiveUser(Long userId) {

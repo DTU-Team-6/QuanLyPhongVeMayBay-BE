@@ -7,8 +7,10 @@ import com.team6.quanlyvemaybay.entity.enums.VaiTro;
 import com.team6.quanlyvemaybay.exception.GlobalExceptionHandler;
 import com.team6.quanlyvemaybay.service.AuthService;
 import com.team6.quanlyvemaybay.service.ChuyenBayService;
+import com.team6.quanlyvemaybay.service.PhienLamMoiService;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -22,6 +24,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -42,10 +45,22 @@ class AuthSecurityTest {
     private AuthService authService;
 
     @MockitoBean
+    private PhienLamMoiService phienLamMoiService;
+
+    @MockitoBean
+    private java.time.Clock clock;
+
+    @MockitoBean
     private JwtDecoder jwtDecoder;
 
     @MockitoBean
     private ChuyenBayService chuyenBayService;
+
+    @BeforeEach
+    void setUp() {
+        when(phienLamMoiService.tao(anyLong(), anyBoolean())).thenReturn(
+                new PhienLamMoiService.KetQua("refresh-token", null, java.time.Instant.parse("2030-01-01T00:00:00Z"), false));
+    }
 
     @Test
     void staleAccessCookieDoesNotBlockPublicFlightsOrCsrf() throws Exception {
@@ -102,6 +117,29 @@ class AuthSecurityTest {
         mockMvc.perform(post("/api/v1/auth/logout"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+    }
+
+    @Test
+    void refreshRequiresCsrfEvenWhenAccessTokenHasExpired() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .cookie(new Cookie("access_token", "expired-token")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void refreshIgnoresExpiredAccessCookieAndRotatesCookies() throws Exception {
+        when(phienLamMoiService.lamMoi("refresh-token")).thenReturn(
+                new PhienLamMoiService.KetQua("new-refresh", "new-access",
+                        java.time.Instant.parse("2030-01-01T00:00:00Z"), false));
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .cookie(new Cookie("access_token", "expired-token"),
+                                new Cookie("refresh_token", "refresh-token"),
+                                new Cookie("XSRF-TOKEN", "csrf-value"))
+                        .header("X-XSRF-TOKEN", "csrf-value"))
+                .andExpect(status().isNoContent())
+                .andExpect(header().string("Set-Cookie",
+                        org.hamcrest.Matchers.containsString("access_token=new-access")));
+        verifyNoInteractions(jwtDecoder);
     }
 
     @Test
