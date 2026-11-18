@@ -16,7 +16,8 @@
 
 ## Đang dở (chưa commit hoặc chưa chạy được)
 
-- Đang triển khai OAuth Google/Facebook: đã tạo migration, logic tài khoản và luồng OAuth Client; chưa áp dụng migration hoặc kiểm tra với nhà cung cấp thật.
+- Người dùng xác nhận đăng nhập Google và Facebook thật thành công trên môi trường phát triển.
+- Người dùng xác nhận database kiểm thử `ve_may_bay_dong_bo_test` có bảng `dinh_danh_oauth` với cấu trúc khớp migration. Lệnh chạy migration trả lỗi bảng đã tồn tại; không sửa hay xóa bảng.
 - Các test `OAuthAccountServiceTest`, `OAuthLoginHandlerTest`, `OAuthSecurityTest`, `AuthSecurityTest` và `./gradlew build -x test` thành công.
 - Người dùng đã áp dụng migration vào database kiểm thử và khởi động lại BE. Kiểm tra API thật: cookie phiên/có thời hạn, rotation, đăng xuất, dùng lại token và hai refresh đồng thời đều đạt; dùng lại token thu hồi token mới.
 - Đã tạo một tài khoản giả trong database kiểm thử; không xoá dữ liệu. Chưa chờ hết hạn thực tế 7 ngày.
@@ -34,6 +35,7 @@
 - Dùng các cột `khach_hang.cmnd_passport` và `khach_hang.quoc_tich` hiện có; không sửa migration và không thêm dependency.
 - OAuth: không tự liên kết khi email trùng; tài khoản mới tạo khách hàng bằng dữ liệu nhà cung cấp, quốc tịch mặc định `Việt Nam`, chưa kiểm tra tuổi nếu thiếu ngày sinh.
 - OAuth sử dụng cookie phiên, chưa hỗ trợ lựa chọn ghi nhớ; cần bật `APP_OAUTH2_ENABLED` và cấu hình thông tin nhà cung cấp ở BE.
+- Với Facebook ở chế độ phát triển, Meta tự cho phép callback localhost; người dùng đã thêm quyền `email` trong cấu hình use case để đăng nhập thử.
 - Database kiểm thử đã có bảng `lien_ket_oauth` cũ tham chiếu `tai_khoan`; người dùng đồng ý tạo bảng mới `dinh_danh_oauth` tham chiếu `nguoi_dung`, không sửa bảng cũ.
 
 ## Lỗi đang gặp (nếu có)
