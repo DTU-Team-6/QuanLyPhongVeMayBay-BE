@@ -103,18 +103,29 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public PersonalInfoResponse currentUser(Long userId) {
-        return toPersonalInfoResponse(findActiveUser(userId));
+        NguoiDung nguoiDung = findActiveUser(userId);
+        return toPersonalInfoResponse(nguoiDung, findCustomerProfile(nguoiDung));
     }
 
     @Transactional
     public PersonalInfoResponse updatePersonalInfo(Long userId, UpdatePersonalInfoRequest request) {
         NguoiDung nguoiDung = findActiveUser(userId);
+        KhachHang khachHang = findCustomerProfile(nguoiDung);
+        if (khachHang != null) {
+            if (request.cmndPassport() != null) {
+                String cmndPassport = request.cmndPassport().trim();
+                khachHang.setCmndPassport(cmndPassport.isEmpty() ? null : cmndPassport);
+            }
+            if (request.quocTich() != null) {
+                khachHang.setQuocTich(request.quocTich().trim());
+            }
+        }
         nguoiDung.setHoTen(request.hoTen().trim());
         nguoiDung.setSoDienThoai(request.soDienThoai());
         nguoiDung.setNgaySinh(request.ngaySinh());
         nguoiDung.setGioiTinh(request.gioiTinh());
         nguoiDung.setDiaChi(request.diaChi() != null ? request.diaChi().trim() : null);
-        return toPersonalInfoResponse(nguoiDungRepository.save(nguoiDung));
+        return toPersonalInfoResponse(nguoiDungRepository.save(nguoiDung), khachHang);
     }
 
     @Transactional
@@ -176,7 +187,16 @@ public class AuthService {
         );
     }
 
-    private PersonalInfoResponse toPersonalInfoResponse(NguoiDung nguoiDung) {
+    private KhachHang findCustomerProfile(NguoiDung nguoiDung) {
+        if (nguoiDung.getVaiTro() != VaiTro.KHACH_HANG) {
+            return null;
+        }
+        return khachHangRepository.findById(nguoiDung.getId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "CUSTOMER_PROFILE_NOT_FOUND", "Không tìm thấy hồ sơ khách hàng."));
+    }
+
+    private PersonalInfoResponse toPersonalInfoResponse(NguoiDung nguoiDung, KhachHang khachHang) {
         return new PersonalInfoResponse(
                 nguoiDung.getId(),
                 nguoiDung.getTaiKhoanEmail(),
@@ -186,7 +206,9 @@ public class AuthService {
                 nguoiDung.getGioiTinh(),
                 nguoiDung.getDiaChi(),
                 nguoiDung.getAnhDaiDien(),
-                nguoiDung.getVaiTro()
+                nguoiDung.getVaiTro(),
+                khachHang != null ? khachHang.getCmndPassport() : null,
+                khachHang != null ? khachHang.getQuocTich() : null
         );
     }
 

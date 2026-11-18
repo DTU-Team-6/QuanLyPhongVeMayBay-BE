@@ -122,7 +122,8 @@ class AuthControllerTest {
                 .build();
         PersonalInfoResponse profile = new PersonalInfoResponse(
                 42L, "user@example.com", "Nguyễn Văn A", "+84901234567",
-                LocalDate.of(1995, 4, 20), GioiTinh.Nam, "Đà Nẵng", null, VaiTro.KHACH_HANG
+                LocalDate.of(1995, 4, 20), GioiTinh.Nam, "Đà Nẵng", null, VaiTro.KHACH_HANG,
+                "123456789", "Việt Nam"
         );
         when(authService.currentUser(42L)).thenReturn(profile);
 
@@ -139,11 +140,11 @@ class AuthControllerTest {
                 .subject("42")
                 .build();
         UpdatePersonalInfoRequest request = new UpdatePersonalInfoRequest(
-                "Nguyễn Văn B", null, null, GioiTinh.Khac, null
+                "Nguyễn Văn B", null, null, GioiTinh.Khac, null, "123456789", "Việt Nam"
         );
         PersonalInfoResponse profile = new PersonalInfoResponse(
                 42L, "user@example.com", "Nguyễn Văn B", null,
-                null, GioiTinh.Khac, null, null, VaiTro.KHACH_HANG
+                null, GioiTinh.Khac, null, null, VaiTro.KHACH_HANG, "123456789", "Việt Nam"
         );
         when(authService.updatePersonalInfo(42L, request)).thenReturn(profile);
 

@@ -13,9 +13,12 @@
 - Kiểm tra schema hiện có; không cần migration.
 - `./gradlew test --tests 'com.team6.quanlyvemaybay.service.AuthServiceTest' --tests 'com.team6.quanlyvemaybay.controller.AuthControllerTest'` thành công.
 - Triển khai refresh token, rotation, phát hiện dùng lại và thu hồi trong commit `ddde9f1`.
+- Mở rộng `GET/PUT /auth/me` để đọc và sửa quốc tịch, CMND/hộ chiếu của khách hàng; không cần migration. Các trường mới bị bỏ qua hoặc `null` được giữ nguyên.
+- Test chọn lọc `AuthServiceTest`, `AuthControllerTest`, `AuthSecurityTest` và `./gradlew build -x test` thành công.
 
 ## Đang dở (chưa commit hoặc chưa chạy được)
 
+- Chưa kiểm tra tích hợp chỉnh sửa hồ sơ với FE thật.
 - Người dùng xác nhận đăng nhập Google và Facebook thật thành công trên môi trường phát triển.
 - Người dùng xác nhận database kiểm thử `ve_may_bay_dong_bo_test` có bảng `dinh_danh_oauth` với cấu trúc khớp migration. Lệnh chạy migration trả lỗi bảng đã tồn tại; không sửa hay xóa bảng.
 - Các test `OAuthAccountServiceTest`, `OAuthLoginHandlerTest`, `OAuthSecurityTest`, `AuthSecurityTest` và `./gradlew build -x test` thành công.

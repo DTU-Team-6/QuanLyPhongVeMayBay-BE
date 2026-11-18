@@ -235,7 +235,7 @@ class AuthSecurityTest {
                 new PersonalInfoResponse(
                         42L, "user@example.com", "Nguyễn Văn B", "+84901234567",
                         null, GioiTinh.Khac,
-                        "Đà Nẵng", null, VaiTro.KHACH_HANG
+                        "Đà Nẵng", null, VaiTro.KHACH_HANG, "123456789", "Việt Nam"
                 )
         );
 
@@ -246,11 +246,14 @@ class AuthSecurityTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"hoTen":"Nguyễn Văn B","soDienThoai":"+84901234567",
-                                 "ngaySinh":null,"gioiTinh":"Khac","diaChi":"Đà Nẵng"}
+                                 "ngaySinh":null,"gioiTinh":"Khac","diaChi":"Đà Nẵng",
+                                 "cmndPassport":"123456789","quocTich":"Việt Nam"}
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.hoTen").value("Nguyễn Văn B"))
-                .andExpect(jsonPath("$.data.email").value("user@example.com"));
+                .andExpect(jsonPath("$.data.email").value("user@example.com"))
+                .andExpect(jsonPath("$.data.cmndPassport").value("123456789"))
+                .andExpect(jsonPath("$.data.quocTich").value("Việt Nam"));
     }
 
     @Test
@@ -265,6 +268,28 @@ class AuthSecurityTest {
                                 """))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+    }
+
+    @Test
+    void updatePersonalInfoRejectsInvalidCustomerFields() throws Exception {
+        when(jwtDecoder.decode("customer-token")).thenReturn(Jwt.withTokenValue("customer-token")
+                .header("alg", "HS256")
+                .subject("42")
+                .claim("role", VaiTro.KHACH_HANG.name())
+                .build());
+
+        mockMvc.perform(MockMvcRequestBuilders.put("/api/v1/auth/me")
+                        .cookie(new Cookie("access_token", "customer-token"))
+                        .cookie(new Cookie("XSRF-TOKEN", "csrf-value"))
+                        .header("X-XSRF-TOKEN", "csrf-value")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"hoTen":"Nguyễn Văn B","gioiTinh":"Khac",
+                                 "cmndPassport":"123456789012345678901","quocTich":"   "}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.details.length()").value(2));
     }
 
     @Test

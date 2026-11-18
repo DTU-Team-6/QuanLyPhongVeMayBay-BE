@@ -92,11 +92,11 @@ Gửi CSRF và cookie; thành công trả `204`, thu hồi nhóm refresh token v
 
 ### `GET /api/v1/auth/me`
 
-Yêu cầu access token hợp lệ trong cookie `access_token` hoặc header Bearer. Trả thông tin cá nhân gồm `id`, `email`, `hoTen`, `soDienThoai`, `ngaySinh`, `gioiTinh`, `diaChi`, `anhDaiDien`, `vaiTro`; access token hết hạn hoặc không có sẽ nhận `401`.
+Yêu cầu access token hợp lệ trong cookie `access_token` hoặc header Bearer. Trả thông tin cá nhân gồm `id`, `email`, `hoTen`, `soDienThoai`, `ngaySinh`, `gioiTinh`, `diaChi`, `anhDaiDien`, `vaiTro`, `cmndPassport`, `quocTich`; hai trường cuối chỉ có giá trị cho khách hàng. Access token hết hạn hoặc không có sẽ nhận `401`.
 
 ### `PUT /api/v1/auth/me`
 
-Cập nhật hồ sơ của tài khoản đang đăng nhập. Tất cả trường trong body đều được gửi theo dạng thay thế; các trường tùy chọn gửi `null` nếu muốn xoá giá trị. Email, vai trò và ảnh đại diện không được thay đổi qua API này.
+Cập nhật hồ sơ của tài khoản đang đăng nhập. Các trường hồ sơ cơ bản được gửi theo dạng thay thế; các trường tùy chọn gửi `null` nếu muốn xoá giá trị. Hai trường khách hàng có cách xử lý riêng như bên dưới. Email, vai trò và ảnh đại diện không được thay đổi qua API này.
 
 ```json
 {
@@ -104,11 +104,14 @@ Cập nhật hồ sơ của tài khoản đang đăng nhập. Tất cả trườ
   "soDienThoai": "+84901234567",
   "ngaySinh": "1995-04-20",
   "gioiTinh": "Nam",
-  "diaChi": "Đà Nẵng"
+  "diaChi": "Đà Nẵng",
+  "cmndPassport": "123456789",
+  "quocTich": "Việt Nam"
 }
 ```
 
 - Thành công: `200 OK`, trả hồ sơ đã cập nhật.
+- Với khách hàng, `cmndPassport` tối đa 20 ký tự; gửi chuỗi rỗng để xóa. `quocTich` không được trống và tối đa 50 ký tự. Nếu bỏ qua hoặc gửi `null` cho hai trường này, giá trị cũ được giữ nguyên. Với vai trò khác, hai trường không được cập nhật.
 - Không có hoặc token không hợp lệ: `401 UNAUTHORIZED`.
 - Request không hợp lệ: `400 VALIDATION_ERROR`.
 - Cần gửi cookie và header CSRF như các request `POST`.

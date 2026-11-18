@@ -172,7 +172,9 @@ class AuthServiceTest {
     @Test
     void updatePersonalInfoChangesOnlyEditableProfileFields() {
         NguoiDung user = activeUser();
+        KhachHang customer = new KhachHang();
         when(nguoiDungRepository.findById(42L)).thenReturn(Optional.of(user));
+        when(khachHangRepository.findById(42L)).thenReturn(Optional.of(customer));
         when(nguoiDungRepository.save(user)).thenReturn(user);
 
         var result = authService.updatePersonalInfo(42L, new UpdatePersonalInfoRequest(
@@ -180,16 +182,71 @@ class AuthServiceTest {
                 "+84901234567",
                 java.time.LocalDate.of(1995, 4, 20),
                 GioiTinh.Nam,
-                "  Đà Nẵng  "
+                "  Đà Nẵng  ",
+                " 123456789 ",
+                " Nhật Bản "
         ));
 
         assertEquals("Nguyễn Văn B", result.hoTen());
         assertEquals("user@example.com", result.email());
         assertEquals("+84901234567", result.soDienThoai());
         assertEquals("Đà Nẵng", result.diaChi());
+        assertEquals("123456789", result.cmndPassport());
+        assertEquals("Nhật Bản", result.quocTich());
         assertEquals(VaiTro.KHACH_HANG, result.vaiTro());
         assertEquals("bcrypt-hash", user.getMatKhau());
         verify(nguoiDungRepository).save(user);
+    }
+
+    @Test
+    void currentUserIncludesCustomerProfile() {
+        NguoiDung user = activeUser();
+        KhachHang customer = new KhachHang();
+        customer.setCmndPassport("123456789");
+        customer.setQuocTich("Việt Nam");
+        when(nguoiDungRepository.findById(42L)).thenReturn(Optional.of(user));
+        when(khachHangRepository.findById(42L)).thenReturn(Optional.of(customer));
+
+        var result = authService.currentUser(42L);
+
+        assertEquals("123456789", result.cmndPassport());
+        assertEquals("Việt Nam", result.quocTich());
+    }
+
+    @Test
+    void updatePreservesCustomerFieldsWhenOmittedAndCanClearIdentity() {
+        NguoiDung user = activeUser();
+        KhachHang customer = new KhachHang();
+        customer.setCmndPassport("123456789");
+        customer.setQuocTich("Việt Nam");
+        when(nguoiDungRepository.findById(42L)).thenReturn(Optional.of(user));
+        when(khachHangRepository.findById(42L)).thenReturn(Optional.of(customer));
+        when(nguoiDungRepository.save(user)).thenReturn(user);
+
+        var result = authService.updatePersonalInfo(42L, new UpdatePersonalInfoRequest(
+                "Tên", null, null, GioiTinh.Khac, null, null, null
+        ));
+        assertEquals("123456789", result.cmndPassport());
+        assertEquals("Việt Nam", result.quocTich());
+
+        result = authService.updatePersonalInfo(42L, new UpdatePersonalInfoRequest(
+                "Tên", null, null, GioiTinh.Khac, null, "", null
+        ));
+        assertEquals(null, result.cmndPassport());
+        assertEquals("Việt Nam", result.quocTich());
+    }
+
+    @Test
+    void currentUserWithoutCustomerRoleDoesNotLoadCustomerProfile() {
+        NguoiDung user = activeUser();
+        user.setVaiTro(VaiTro.NHAN_VIEN);
+        when(nguoiDungRepository.findById(42L)).thenReturn(Optional.of(user));
+
+        var result = authService.currentUser(42L);
+
+        assertEquals(null, result.cmndPassport());
+        assertEquals(null, result.quocTich());
+        verify(khachHangRepository, never()).findById(any());
     }
 
     @Test
