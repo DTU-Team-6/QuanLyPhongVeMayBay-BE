@@ -19,6 +19,7 @@
 ## Đang dở (chưa commit hoặc chưa chạy được)
 
 - Đã thêm API ký upload avatar và xác minh/lưu ảnh Cloudinary; migration `V20261118_1246__them_public_id_avatar.sql` chưa áp dụng. Test chọn lọc service/controller/security cho avatar đạt; chưa kiểm thử Cloudinary thật.
+- Sửa `CloudinaryAvatarClient` tự tạo `RestClient`, không phụ thuộc bean `RestClient.Builder` bị thiếu khi khởi động. Cần chạy lại `bootRun` trong terminal có cấu hình `JWT_SECRET` và database.
 - Chưa kiểm tra tích hợp chỉnh sửa hồ sơ với FE thật.
 - Người dùng xác nhận đăng nhập Google và Facebook thật thành công trên môi trường phát triển.
 - Người dùng xác nhận database kiểm thử `ve_may_bay_dong_bo_test` có bảng `dinh_danh_oauth` với cấu trúc khớp migration. Lệnh chạy migration trả lỗi bảng đã tồn tại; không sửa hay xóa bảng.

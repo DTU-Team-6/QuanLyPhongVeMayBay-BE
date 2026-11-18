@@ -35,14 +35,13 @@ public class CloudinaryAvatarClient {
     private final String uploadPreset;
 
     public CloudinaryAvatarClient(
-            RestClient.Builder restClientBuilder,
             Clock clock,
             @Value("${app.cloudinary.cloud-name:}") String cloudName,
             @Value("${app.cloudinary.api-key:}") String apiKey,
             @Value("${app.cloudinary.api-secret:}") String apiSecret,
             @Value("${app.cloudinary.avatar-upload-preset:}") String uploadPreset
     ) {
-        this.restClient = restClientBuilder.build();
+        this.restClient = RestClient.create();
         this.clock = clock;
         this.cloudName = cloudName == null ? "" : cloudName.trim();
         this.apiKey = apiKey == null ? "" : apiKey.trim();
