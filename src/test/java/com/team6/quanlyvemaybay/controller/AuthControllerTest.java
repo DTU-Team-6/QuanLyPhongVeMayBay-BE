@@ -1,14 +1,18 @@
 package com.team6.quanlyvemaybay.controller;
 
 import com.team6.quanlyvemaybay.dto.auth.AuthUserResponse;
+import com.team6.quanlyvemaybay.dto.auth.AvatarUpdateResponse;
+import com.team6.quanlyvemaybay.dto.auth.AvatarUploadSignatureResponse;
 import com.team6.quanlyvemaybay.dto.auth.ChangePasswordRequest;
 import com.team6.quanlyvemaybay.dto.auth.LoginRequest;
 import com.team6.quanlyvemaybay.dto.auth.PersonalInfoResponse;
 import com.team6.quanlyvemaybay.dto.auth.RegisterRequest;
 import com.team6.quanlyvemaybay.dto.auth.UpdatePersonalInfoRequest;
+import com.team6.quanlyvemaybay.dto.auth.UpdateAvatarRequest;
 import com.team6.quanlyvemaybay.entity.enums.GioiTinh;
 import com.team6.quanlyvemaybay.entity.enums.VaiTro;
 import com.team6.quanlyvemaybay.service.AuthService;
+import com.team6.quanlyvemaybay.service.CloudinaryAvatarService;
 import com.team6.quanlyvemaybay.service.PhienLamMoiService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -31,6 +35,7 @@ import static org.mockito.Mockito.when;
 class AuthControllerTest {
 
     private AuthService authService;
+    private CloudinaryAvatarService cloudinaryAvatarService;
     private PhienLamMoiService phienLamMoiService;
     private AuthController controller;
     private final Instant now = Instant.parse("2026-11-17T00:00:00Z");
@@ -38,8 +43,11 @@ class AuthControllerTest {
     @BeforeEach
     void setUp() {
         authService = mock(AuthService.class);
+        cloudinaryAvatarService = mock(CloudinaryAvatarService.class);
         phienLamMoiService = mock(PhienLamMoiService.class);
-        controller = new AuthController(authService, phienLamMoiService, false, Clock.fixed(now, ZoneOffset.UTC));
+        controller = new AuthController(
+                authService, cloudinaryAvatarService, phienLamMoiService, false, Clock.fixed(now, ZoneOffset.UTC)
+        );
     }
 
     @Test
@@ -152,6 +160,48 @@ class AuthControllerTest {
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(profile, response.getBody().getData());
+    }
+
+    @Test
+    void avatarUploadSignatureIsScopedToAuthenticatedUser() {
+        var jwt = org.springframework.security.oauth2.jwt.Jwt.withTokenValue("token")
+                .header("alg", "HS256")
+                .subject("42")
+                .build();
+        AvatarUploadSignatureResponse signature = new AvatarUploadSignatureResponse(
+                "cloud", "api-key", "https://api.cloudinary.com/v1_1/cloud/image/upload",
+                123L, "avatar_42_0123456789abcdef0123456789abcdef",
+                "signed-value", "avatar-preset", "jpg,png,webp", 5 * 1024 * 1024
+        );
+        when(cloudinaryAvatarService.createUploadSignature(42L)).thenReturn(signature);
+
+        var response = controller.createAvatarUploadSignature(jwt);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(signature, response.getBody().getData());
+    }
+
+    @Test
+    void updateAvatarReturnsProfileAndCleanupStatus() {
+        var jwt = org.springframework.security.oauth2.jwt.Jwt.withTokenValue("token")
+                .header("alg", "HS256")
+                .subject("42")
+                .build();
+        UpdateAvatarRequest request = new UpdateAvatarRequest("avatar_42_0123456789abcdef0123456789abcdef");
+        PersonalInfoResponse profile = new PersonalInfoResponse(
+                42L, "user@example.com", "Nguyễn Văn A", null, null, GioiTinh.Khac,
+                null, "https://res.cloudinary.com/cloud/image/upload/avatar.jpg",
+                VaiTro.KHACH_HANG, null, "Việt Nam"
+        );
+        AvatarUpdateResponse result = new AvatarUpdateResponse(
+                profile, AvatarUpdateResponse.OldAvatarCleanupStatus.DELETED
+        );
+        when(cloudinaryAvatarService.updateAvatar(42L, request.publicId())).thenReturn(result);
+
+        var response = controller.updateAvatar(jwt, request);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(result, response.getBody().getData());
     }
 
     @Test

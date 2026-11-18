@@ -2,10 +2,13 @@ package com.team6.quanlyvemaybay.controller;
 
 import com.team6.quanlyvemaybay.dto.auth.AuthUserResponse;
 import com.team6.quanlyvemaybay.dto.auth.PersonalInfoResponse;
+import com.team6.quanlyvemaybay.dto.auth.AvatarUpdateResponse;
+import com.team6.quanlyvemaybay.dto.auth.AvatarUploadSignatureResponse;
 import com.team6.quanlyvemaybay.entity.enums.GioiTinh;
 import com.team6.quanlyvemaybay.entity.enums.VaiTro;
 import com.team6.quanlyvemaybay.exception.GlobalExceptionHandler;
 import com.team6.quanlyvemaybay.service.AuthService;
+import com.team6.quanlyvemaybay.service.CloudinaryAvatarService;
 import com.team6.quanlyvemaybay.service.ChuyenBayService;
 import com.team6.quanlyvemaybay.service.PhienLamMoiService;
 import jakarta.servlet.http.Cookie;
@@ -43,6 +46,9 @@ class AuthSecurityTest {
 
     @MockitoBean
     private AuthService authService;
+
+    @MockitoBean
+    private CloudinaryAvatarService cloudinaryAvatarService;
 
     @MockitoBean
     private PhienLamMoiService phienLamMoiService;
@@ -290,6 +296,76 @@ class AuthSecurityTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
                 .andExpect(jsonPath("$.details.length()").value(2));
+    }
+
+    @Test
+    void avatarEndpointsRequireAuthenticationAndCsrf() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/avatar/upload-signature")
+                        .cookie(new Cookie("XSRF-TOKEN", "csrf-value"))
+                        .header("X-XSRF-TOKEN", "csrf-value"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(post("/api/v1/auth/avatar")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"publicId":"avatar_42_0123456789abcdef0123456789abcdef"}
+                                """))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+    }
+
+    @Test
+    void authenticatedUserCanRequestAvatarUploadSignatureWithCsrf() throws Exception {
+        when(jwtDecoder.decode("customer-token")).thenReturn(Jwt.withTokenValue("customer-token")
+                .header("alg", "HS256")
+                .subject("42")
+                .claim("role", VaiTro.KHACH_HANG.name())
+                .build());
+        when(cloudinaryAvatarService.createUploadSignature(42L)).thenReturn(new AvatarUploadSignatureResponse(
+                "cloud", "api-key", "https://api.cloudinary.com/v1_1/cloud/image/upload",
+                123L, "avatar_42_0123456789abcdef0123456789abcdef",
+                "signed-value", "avatar-preset", "jpg,png,webp", 5 * 1024 * 1024
+        ));
+
+        mockMvc.perform(post("/api/v1/auth/avatar/upload-signature")
+                        .cookie(new Cookie("access_token", "customer-token"))
+                        .cookie(new Cookie("XSRF-TOKEN", "csrf-value"))
+                        .header("X-XSRF-TOKEN", "csrf-value"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.publicId").value("avatar_42_0123456789abcdef0123456789abcdef"))
+                .andExpect(jsonPath("$.data.maxFileSize").value(5 * 1024 * 1024));
+    }
+
+    @Test
+    void authenticatedUserCanSaveAvatarWithCsrf() throws Exception {
+        when(jwtDecoder.decode("customer-token")).thenReturn(Jwt.withTokenValue("customer-token")
+                .header("alg", "HS256")
+                .subject("42")
+                .claim("role", VaiTro.KHACH_HANG.name())
+                .build());
+        when(cloudinaryAvatarService.updateAvatar(anyLong(),
+                org.mockito.ArgumentMatchers.eq("avatar_42_0123456789abcdef0123456789abcdef")))
+                .thenReturn(new AvatarUpdateResponse(
+                        new PersonalInfoResponse(
+                                42L, "user@example.com", "Nguyễn Văn A", null, null, GioiTinh.Khac,
+                                null, "https://res.cloudinary.com/cloud/image/upload/avatar.jpg",
+                                VaiTro.KHACH_HANG, null, "Việt Nam"
+                        ),
+                        AvatarUpdateResponse.OldAvatarCleanupStatus.NOT_REQUIRED
+                ));
+
+        mockMvc.perform(MockMvcRequestBuilders.post("/api/v1/auth/avatar")
+                        .cookie(new Cookie("access_token", "customer-token"))
+                        .cookie(new Cookie("XSRF-TOKEN", "csrf-value"))
+                        .header("X-XSRF-TOKEN", "csrf-value")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"publicId":"avatar_42_0123456789abcdef0123456789abcdef"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.profile.anhDaiDien")
+                        .value("https://res.cloudinary.com/cloud/image/upload/avatar.jpg"))
+                .andExpect(jsonPath("$.data.oldAvatarCleanupStatus").value("NOT_REQUIRED"));
     }
 
     @Test

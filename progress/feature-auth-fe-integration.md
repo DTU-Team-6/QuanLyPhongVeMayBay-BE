@@ -18,6 +18,7 @@
 
 ## Đang dở (chưa commit hoặc chưa chạy được)
 
+- Đã thêm API ký upload avatar và xác minh/lưu ảnh Cloudinary; migration `V20261118_1246__them_public_id_avatar.sql` chưa áp dụng. Test chọn lọc service/controller/security cho avatar đạt; chưa kiểm thử Cloudinary thật.
 - Chưa kiểm tra tích hợp chỉnh sửa hồ sơ với FE thật.
 - Người dùng xác nhận đăng nhập Google và Facebook thật thành công trên môi trường phát triển.
 - Người dùng xác nhận database kiểm thử `ve_may_bay_dong_bo_test` có bảng `dinh_danh_oauth` với cấu trúc khớp migration. Lệnh chạy migration trả lỗi bảng đã tồn tại; không sửa hay xóa bảng.
@@ -30,7 +31,8 @@
 ## Việc tiếp theo (theo thứ tự)
 
 1. Kiểm tra tích hợp FE/BE trên giao diện và đồng bộ nhiều tab.
-2. Tạo Pull Request vào `develop` sau khi đồng bộ nhánh và chạy build theo quy trình.
+2. Áp dụng migration avatar và cấu hình signed upload preset Cloudinary trên môi trường kiểm thử, sau đó thử upload thật.
+3. Tạo Pull Request vào `develop` sau khi đồng bộ nhánh và chạy build theo quy trình.
 
 ## Quyết định đã chốt và lưu ý
 

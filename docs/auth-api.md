@@ -13,6 +13,26 @@ Trước khi dùng, áp dụng thủ công migration `src/main/resources/db/migr
 - Thành công cấp cookie phiên HttpOnly và FE gọi `/api/v1/auth/me`. OAuth hiện không áp dụng lựa chọn “Ghi nhớ đăng nhập”. Thất bại chuyển về callback với `error` là `OAUTH_FAILED`, `OAUTH_PROFILE_INVALID`, `EMAIL_ALREADY_REGISTERED` hoặc `ACCOUNT_INACTIVE`.
 - Nhận diện theo nhà cung cấp và mã định danh, không tự liên kết khi email đã tồn tại. Người mới cần email và họ tên; Google phải xác nhận email. Tài khoản mới là khách hàng, không có mật khẩu, quốc tịch mặc định `Việt Nam`, chưa kiểm tra tuổi nếu thiếu ngày sinh. Facebook có thể không cung cấp email, khi đó đăng nhập thất bại.
 
+## Ảnh đại diện Cloudinary
+
+Trước khi dùng, áp dụng thủ công migration `src/main/resources/db/migration/V20261118_1246__them_public_id_avatar.sql` để thêm `nguoi_dung.anh_dai_dien_public_id`. Cấu hình `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` và `CLOUDINARY_AVATAR_UPLOAD_PRESET` trong môi trường BE. Upload preset phải là signed preset; giới hạn định dạng JPEG/PNG/WebP và kích thước tối đa 5 MB.
+
+### `POST /api/v1/auth/avatar/upload-signature`
+
+Yêu cầu đăng nhập và CSRF token hợp lệ. FE gửi cookie và header `X-XSRF-TOKEN`, không cần request body. BE trả về `cloudName`, `apiKey`, `uploadUrl`, `timestamp`, `publicId`, `signature`, `uploadPreset`, `allowedFormats` và `maxFileSize`. FE dùng các giá trị đã ký này để tải file trực tiếp lên Cloudinary; không gửi API secret.
+
+### `POST /api/v1/auth/avatar`
+
+Sau khi Cloudinary xác nhận upload thành công, FE gửi public ID do BE cấp:
+
+```json
+{
+  "publicId": "avatar_123_<chuỗi-uuid-hex>"
+}
+```
+
+BE xác minh asset qua Cloudinary (public ID, loại tài nguyên, định dạng, kích thước và URL) rồi mới gắn ảnh vào hồ sơ. Thành công trả hồ sơ mới trong `data.profile` cùng `data.oldAvatarCleanupStatus`, có thể là `NOT_REQUIRED`, `DELETED`, `LEGACY_NOT_TRACKED` hoặc `FAILED`. Ảnh cũ chỉ được xóa khi public ID được BE theo dõi và thuộc tài khoản; lỗi xóa không làm mất ảnh mới đã lưu.
+
 ## Luồng gọi từ frontend
 
 1. Gọi `GET /api/v1/auth/csrf`, nhận cookie `XSRF-TOKEN`.

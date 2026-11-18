@@ -1,13 +1,17 @@
 package com.team6.quanlyvemaybay.controller;
 
 import com.team6.quanlyvemaybay.dto.auth.AuthUserResponse;
+import com.team6.quanlyvemaybay.dto.auth.AvatarUpdateResponse;
+import com.team6.quanlyvemaybay.dto.auth.AvatarUploadSignatureResponse;
 import com.team6.quanlyvemaybay.dto.auth.ChangePasswordRequest;
 import com.team6.quanlyvemaybay.dto.auth.LoginRequest;
 import com.team6.quanlyvemaybay.dto.auth.PersonalInfoResponse;
 import com.team6.quanlyvemaybay.dto.auth.RegisterRequest;
 import com.team6.quanlyvemaybay.dto.auth.UpdatePersonalInfoRequest;
+import com.team6.quanlyvemaybay.dto.auth.UpdateAvatarRequest;
 import com.team6.quanlyvemaybay.dto.common.ApiResponse;
 import com.team6.quanlyvemaybay.service.AuthService;
+import com.team6.quanlyvemaybay.service.CloudinaryAvatarService;
 import com.team6.quanlyvemaybay.service.JwtTokenService;
 import com.team6.quanlyvemaybay.service.PhienLamMoiService;
 import jakarta.validation.Valid;
@@ -36,17 +40,20 @@ import java.time.Instant;
 public class AuthController {
 
     private final AuthService authService;
+    private final CloudinaryAvatarService cloudinaryAvatarService;
     private final PhienLamMoiService phienLamMoiService;
     private final boolean cookieSecure;
     private final Clock clock;
 
     public AuthController(
             AuthService authService,
+            CloudinaryAvatarService cloudinaryAvatarService,
             PhienLamMoiService phienLamMoiService,
             @Value("${app.auth.cookie-secure:false}") boolean cookieSecure,
             Clock clock
     ) {
         this.authService = authService;
+        this.cloudinaryAvatarService = cloudinaryAvatarService;
         this.phienLamMoiService = phienLamMoiService;
         this.cookieSecure = cookieSecure;
         this.clock = clock;
@@ -125,6 +132,7 @@ public class AuthController {
                 .maxAge(0)
                 .build();
     }
+
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<PersonalInfoResponse>> me(@AuthenticationPrincipal Jwt jwt) {
         Long userId = Long.valueOf(jwt.getSubject());
@@ -142,6 +150,28 @@ public class AuthController {
                 request
         );
         return ResponseEntity.ok(ApiResponse.ok(user, "Cập nhật thông tin cá nhân thành công"));
+    }
+
+    @PostMapping("/avatar/upload-signature")
+    public ResponseEntity<ApiResponse<AvatarUploadSignatureResponse>> createAvatarUploadSignature(
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        AvatarUploadSignatureResponse signature = cloudinaryAvatarService.createUploadSignature(
+                Long.valueOf(jwt.getSubject())
+        );
+        return ResponseEntity.ok(ApiResponse.ok(signature, "Đã tạo thông tin tải ảnh đại diện"));
+    }
+
+    @PostMapping("/avatar")
+    public ResponseEntity<ApiResponse<AvatarUpdateResponse>> updateAvatar(
+            @AuthenticationPrincipal Jwt jwt,
+            @Valid @RequestBody UpdateAvatarRequest request
+    ) {
+        AvatarUpdateResponse result = cloudinaryAvatarService.updateAvatar(
+                Long.valueOf(jwt.getSubject()),
+                request.publicId()
+        );
+        return ResponseEntity.ok(ApiResponse.ok(result, "Cập nhật ảnh đại diện thành công"));
     }
 
     @PostMapping("/change-password")
