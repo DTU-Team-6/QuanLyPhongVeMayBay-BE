@@ -27,6 +27,7 @@
 - Người dùng đã áp dụng migration vào database kiểm thử và khởi động lại BE. Kiểm tra API thật: cookie phiên/có thời hạn, rotation, đăng xuất, dùng lại token và hai refresh đồng thời đều đạt; dùng lại token thu hồi token mới.
 - Đã tạo một tài khoản giả trong database kiểm thử; không xoá dữ liệu. Chưa chờ hết hạn thực tế 7 ngày.
 - Sửa tài liệu database cho khớp cấu hình thực tế: repo chưa dùng Flyway và không tự chạy SQL khởi tạo.
+- Đã bổ sung hướng dẫn agent BE cấu hình môi trường và database kiểm thử cho các chức năng tài khoản FE.
 - Chưa xác minh tích hợp FE/BE.
 
 ## Việc tiếp theo (theo thứ tự)
