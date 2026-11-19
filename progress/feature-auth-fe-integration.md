@@ -18,6 +18,8 @@
 
 ## Đang dở (chưa commit hoặc chưa chạy được)
 
+- Người dùng chọn khôi phục mật khẩu bằng liên kết dùng một lần, hết hạn sau 15 phút; chỉ áp dụng cho tài khoản đã có mật khẩu. Email dùng Mailtrap Sandbox khi dev/test và Brevo SMTP khi production; đã đồng ý thêm dependency Spring Boot Mail.
+- Người dùng kiểm tra database kiểm thử và xác nhận chưa có bảng `xac_thuc_token`. Đã tạo migration `V20261119_0817__them_bang_xac_thuc_token.sql` theo schema hiện có; `./gradlew build -x test` thành công. Migration chưa được chạy hoặc kiểm thử trên database. Các API, email và giao diện khôi phục chưa triển khai.
 - Đã thêm API ký upload avatar và xác minh/lưu ảnh Cloudinary; migration `V20261118_1246__them_public_id_avatar.sql` chưa áp dụng. Test chọn lọc service/controller/security cho avatar đạt; chưa kiểm thử Cloudinary thật.
 - Sửa `CloudinaryAvatarClient` tự tạo `RestClient`, không phụ thuộc bean `RestClient.Builder` bị thiếu khi khởi động. Cần chạy lại `bootRun` trong terminal có cấu hình `JWT_SECRET` và database.
 - Chưa kiểm tra tích hợp chỉnh sửa hồ sơ với FE thật.
