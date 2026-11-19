@@ -11,6 +11,8 @@ import com.team6.quanlyvemaybay.entity.enums.VaiTro;
 import com.team6.quanlyvemaybay.exception.BusinessException;
 import com.team6.quanlyvemaybay.repository.KhachHangRepository;
 import com.team6.quanlyvemaybay.repository.NguoiDungRepository;
+import com.team6.quanlyvemaybay.repository.XacThucTokenRepository;
+import com.team6.quanlyvemaybay.entity.XacThucToken;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,6 +44,8 @@ class AuthServiceTest {
     private JwtTokenService jwtTokenService;
     @Mock
     private PhienLamMoiService phienLamMoiService;
+    @Mock
+    private XacThucTokenRepository xacThucTokenRepository;
 
     private AuthService authService;
 
@@ -52,7 +56,8 @@ class AuthServiceTest {
                 khachHangRepository,
                 passwordEncoder,
                 jwtTokenService,
-                phienLamMoiService
+                phienLamMoiService,
+                xacThucTokenRepository
         );
     }
 
@@ -252,7 +257,7 @@ class AuthServiceTest {
     @Test
     void changePasswordVerifiesCurrentPasswordAndStoresNewHash() {
         NguoiDung user = activeUser();
-        when(nguoiDungRepository.findById(42L)).thenReturn(Optional.of(user));
+        when(nguoiDungRepository.findByIdForUpdate(42L)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("old-password", "bcrypt-hash")).thenReturn(true);
         when(passwordEncoder.matches("new-password", "bcrypt-hash")).thenReturn(false);
         when(passwordEncoder.encode("new-password")).thenReturn("new-bcrypt-hash");
@@ -261,13 +266,14 @@ class AuthServiceTest {
 
         assertEquals("new-bcrypt-hash", user.getMatKhau());
         verify(nguoiDungRepository).save(user);
+        verify(xacThucTokenRepository).thuHoiTheoNguoiDung(42L, XacThucToken.Loai.QUEN_MAT_KHAU);
         verify(phienLamMoiService).thuHoiNguoiDung(42L);
     }
 
     @Test
     void changePasswordRejectsIncorrectCurrentPassword() {
         NguoiDung user = activeUser();
-        when(nguoiDungRepository.findById(42L)).thenReturn(Optional.of(user));
+        when(nguoiDungRepository.findByIdForUpdate(42L)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("wrong-password", "bcrypt-hash")).thenReturn(false);
 
         BusinessException exception = assertThrows(
@@ -285,7 +291,7 @@ class AuthServiceTest {
     @Test
     void changePasswordRejectsSamePassword() {
         NguoiDung user = activeUser();
-        when(nguoiDungRepository.findById(42L)).thenReturn(Optional.of(user));
+        when(nguoiDungRepository.findByIdForUpdate(42L)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("old-password", "bcrypt-hash")).thenReturn(true);
 
         BusinessException exception = assertThrows(

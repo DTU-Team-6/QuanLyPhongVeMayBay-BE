@@ -67,7 +67,8 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/api/v1/auth/csrf", "/api/v1/auth/register", "/api/v1/auth/login",
-                                "/api/v1/auth/logout", "/api/v1/auth/refresh").permitAll()
+                                "/api/v1/auth/logout", "/api/v1/auth/refresh",
+                                "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password").permitAll()
                         .requestMatchers("/oauth2/authorization/**", "/login/oauth2/code/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/auth/me").authenticated()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
@@ -163,7 +164,8 @@ public class SecurityConfig {
                 return true;
             }
             if (List.of("/api/v1/auth/csrf", "/api/v1/auth/login", "/api/v1/auth/register",
-                    "/api/v1/auth/logout", "/api/v1/auth/refresh").contains(path)) {
+                    "/api/v1/auth/logout", "/api/v1/auth/refresh",
+                    "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password").contains(path)) {
                 return true;
             }
             return "GET".equals(request.getMethod()) && (

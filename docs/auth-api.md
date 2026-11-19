@@ -152,10 +152,25 @@ Yêu cầu đăng nhập và CSRF token hợp lệ. Mật khẩu hiện tại ph
 - Mật khẩu mới trùng mật khẩu hiện tại: `400 PASSWORD_UNCHANGED`.
 - Thu hồi refresh token của tài khoản. Access token đã phát hành vẫn có thể hợp lệ đến hết thời hạn tối đa 15 phút.
 
+### Khôi phục mật khẩu qua email
+
+Áp dụng thủ công migration `src/main/resources/db/migration/V20261119_0817__them_bang_xac_thuc_token.sql`. Cấu hình `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM` và `APP_FRONTEND_URL` trong môi trường BE; SMTP yêu cầu STARTTLS. Khi thử nghiệm dùng Mailtrap Sandbox; khi triển khai cần địa chỉ gửi được nhà cung cấp xác minh. Không chia sẻ thông tin SMTP.
+
+Cả hai endpoint công khai nhưng vẫn yêu cầu cookie và header CSRF.
+
+#### `POST /api/v1/auth/forgot-password`
+
+Body: `{"email":"khach@example.com"}`. Trả `200` với thông báo chung dù tài khoản không tồn tại hoặc không có mật khẩu. Tài khoản đang hoạt động có mật khẩu nhận liên kết dùng một lần, hiệu lực 15 phút; yêu cầu mới thu hồi liên kết cũ. Không gửi email được trả `503 MAIL_UNAVAILABLE`.
+
+#### `POST /api/v1/auth/reset-password`
+
+Body: `{"token":"<token-từ-fragment>","newPassword":"MatKhauMoi456"}`. Mật khẩu cần 8–72 ký tự, có chữ hoa, chữ thường, số và tối đa 72 byte UTF-8. Thành công trả `200`, thu hồi các liên kết khôi phục còn lại và refresh token. Token không hợp lệ, hết hạn hoặc đã dùng trả `400 PASSWORD_RESET_INVALID`. Access token đã cấp vẫn có thể hợp lệ tới khi hết hạn.
+
 ## Giới hạn đã biết của phiên bản tạm
 
 - Refresh token yêu cầu bảng `phien_lam_moi`; migration phải được áp dụng thủ công trước khi sử dụng.
 - Đổi mật khẩu không thu hồi access token đã phát hành; token cũ hết hạn theo TTL tối đa 15 phút.
+- Khôi phục mật khẩu chưa có giới hạn tần suất; lỗi SMTP có thể làm lộ sự khác biệt giữa tài khoản phù hợp và không phù hợp. Cần xử lý trước khi triển khai production.
 - CSRF vẫn bật. FE phải gọi endpoint CSRF và gửi header tương ứng cho các request thay đổi dữ liệu.
 - Báo cáo, thống kê, quản lý nhân viên, vé, tin tức và điểm đến ghi mới yêu cầu vai trò `ADMIN` hoặc `NHAN_VIEN`; tạo đặt chỗ yêu cầu đăng nhập. Tìm chuyến bay, thông tin công khai và đọc điểm đến là API công khai.
 - Các API quản lý khách hàng `/api/v1/khach-hang/**` yêu cầu vai trò `ADMIN` hoặc `NHAN_VIEN`; request thay đổi dữ liệu phải có CSRF token hợp lệ.

@@ -11,6 +11,7 @@ import com.team6.quanlyvemaybay.service.AuthService;
 import com.team6.quanlyvemaybay.service.CloudinaryAvatarService;
 import com.team6.quanlyvemaybay.service.ChuyenBayService;
 import com.team6.quanlyvemaybay.service.PhienLamMoiService;
+import com.team6.quanlyvemaybay.service.PasswordResetService;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,7 +38,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(controllers = {AuthController.class, ChuyenBayController.class})
+@WebMvcTest(controllers = {AuthController.class, PasswordResetController.class, ChuyenBayController.class})
 @Import({com.team6.quanlyvemaybay.config.SecurityConfig.class, GlobalExceptionHandler.class})
 class AuthSecurityTest {
 
@@ -52,6 +53,9 @@ class AuthSecurityTest {
 
     @MockitoBean
     private PhienLamMoiService phienLamMoiService;
+
+    @MockitoBean
+    private PasswordResetService passwordResetService;
 
     @MockitoBean
     private java.time.Clock clock;
@@ -175,6 +179,27 @@ class AuthSecurityTest {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.code").value("ACCESS_DENIED"))
                 .andExpect(jsonPath("$.details").isArray());
+    }
+
+    @Test
+    void passwordRecoveryAllowsAnonymousWithCsrfAndIgnoresExpiredAccessCookie() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/forgot-password")
+                        .cookie(new Cookie("access_token", "expired-token"), new Cookie("XSRF-TOKEN", "csrf-value"))
+                        .header("X-XSRF-TOKEN", "csrf-value")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"user@example.com\"}"))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/v1/auth/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"newPassword\":\"Newpass123\"}"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/v1/auth/reset-password")
+                        .cookie(new Cookie("XSRF-TOKEN", "csrf-value"))
+                        .header("X-XSRF-TOKEN", "csrf-value")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"newPassword\":\"Newpass123\"}"))
+                .andExpect(status().isOk());
+        verifyNoInteractions(jwtDecoder);
     }
 
     @Test

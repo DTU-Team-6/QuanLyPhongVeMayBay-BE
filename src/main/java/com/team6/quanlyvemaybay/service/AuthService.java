@@ -8,12 +8,14 @@ import com.team6.quanlyvemaybay.dto.auth.RegisterRequest;
 import com.team6.quanlyvemaybay.dto.auth.UpdatePersonalInfoRequest;
 import com.team6.quanlyvemaybay.entity.KhachHang;
 import com.team6.quanlyvemaybay.entity.NguoiDung;
+import com.team6.quanlyvemaybay.entity.XacThucToken;
 import com.team6.quanlyvemaybay.entity.enums.GioiTinh;
 import com.team6.quanlyvemaybay.entity.enums.VaiTro;
 import com.team6.quanlyvemaybay.exception.BusinessException;
 import com.team6.quanlyvemaybay.exception.ResourceNotFoundException;
 import com.team6.quanlyvemaybay.repository.KhachHangRepository;
 import com.team6.quanlyvemaybay.repository.NguoiDungRepository;
+import com.team6.quanlyvemaybay.repository.XacThucTokenRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -31,19 +33,22 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenService jwtTokenService;
     private final PhienLamMoiService phienLamMoiService;
+    private final XacThucTokenRepository xacThucTokenRepository;
 
     public AuthService(
             NguoiDungRepository nguoiDungRepository,
             KhachHangRepository khachHangRepository,
             PasswordEncoder passwordEncoder,
             JwtTokenService jwtTokenService,
-            PhienLamMoiService phienLamMoiService
+            PhienLamMoiService phienLamMoiService,
+            XacThucTokenRepository xacThucTokenRepository
     ) {
         this.nguoiDungRepository = nguoiDungRepository;
         this.khachHangRepository = khachHangRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenService = jwtTokenService;
         this.phienLamMoiService = phienLamMoiService;
+        this.xacThucTokenRepository = xacThucTokenRepository;
     }
 
     @Transactional
@@ -132,7 +137,12 @@ public class AuthService {
     public void changePassword(Long userId, ChangePasswordRequest request) {
         validateBcryptPasswordLength(request.currentPassword());
         validateBcryptPasswordLength(request.newPassword());
-        NguoiDung nguoiDung = findActiveUser(userId);
+        NguoiDung nguoiDung = nguoiDungRepository.findByIdForUpdate(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("USER_NOT_FOUND", "Không tìm thấy người dùng."));
+        if (!Byte.valueOf((byte) 1).equals(nguoiDung.getTrangThai())) {
+            throw new BusinessException(HttpStatus.FORBIDDEN, "ACCOUNT_INACTIVE",
+                    "Tài khoản đã bị khóa hoặc chưa được kích hoạt.");
+        }
         String passwordHash = nguoiDung.getMatKhau();
         if (passwordHash == null || !passwordEncoder.matches(request.currentPassword(), passwordHash)) {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "CURRENT_PASSWORD_INVALID",
@@ -144,6 +154,7 @@ public class AuthService {
         }
         nguoiDung.setMatKhau(passwordEncoder.encode(request.newPassword()));
         nguoiDungRepository.save(nguoiDung);
+        xacThucTokenRepository.thuHoiTheoNguoiDung(userId, XacThucToken.Loai.QUEN_MAT_KHAU);
         phienLamMoiService.thuHoiNguoiDung(userId);
     }
 
