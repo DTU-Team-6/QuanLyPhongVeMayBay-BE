@@ -24,15 +24,18 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 
 /**
  * Service xử lý nghiệp vụ truy vấn chuyến bay cho Trang chủ và tìm kiếm.
@@ -59,6 +62,45 @@ public class ChuyenBayService {
                         maHang == null ? null : maHang.toUpperCase(Locale.ROOT))
                 .stream().filter(hv -> hv.getChuyenBay().getThoiGianKhoiHanh().isAfter(LocalDateTime.now(clock)))
                 .map(this::toSearchResponse).toList();
+    }
+
+    /** Lấy giá thấp nhất còn chỗ theo từng ngày để thanh ngày gợi ý kết quả chính xác. */
+    public Map<String, BigDecimal> getMinPriceByDateRange(
+            String maDi, String maDen, LocalDate ngayBatDau, LocalDate ngayKetThuc,
+            int soNguoiLon, int soTreEm
+    ) {
+        if (maDi.equalsIgnoreCase(maDen)) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "INVALID_ROUTE", "Sân bay đi và đến phải khác nhau");
+        }
+        if (ngayBatDau.isAfter(ngayKetThuc)) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "INVALID_DATE_RANGE", "Ngày bắt đầu phải trước hoặc bằng ngày kết thúc");
+        }
+        if (ChronoUnit.DAYS.between(ngayBatDau, ngayKetThuc) > 30) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "DATE_RANGE_TOO_LARGE", "Khoảng ngày tìm giá tối đa là 31 ngày");
+        }
+        int soCho = soNguoiLon + soTreEm;
+        if (soCho > 9) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "PASSENGER_LIMIT_EXCEEDED", "Tổng số hành khách tìm kiếm không được vượt quá 9 người");
+        }
+
+        LocalDateTime now = LocalDateTime.now(clock);
+        List<HangVeChuyenBay> candidates = hangVeChuyenBayRepository.findAvailableFaresForDateRange(
+                maDi.toUpperCase(Locale.ROOT), maDen.toUpperCase(Locale.ROOT),
+                ngayBatDau.atStartOfDay(), ngayKetThuc.plusDays(1).atStartOfDay(),
+                TrangThaiChuyenBay.DA_HUY, TrangThaiHang.HOAT_DONG, soCho
+        );
+
+        Map<String, BigDecimal> minPrices = new TreeMap<>();
+        for (HangVeChuyenBay fare : candidates) {
+            ChuyenBay flight = fare.getChuyenBay();
+            if (!flight.getThoiGianKhoiHanh().isAfter(now)) {
+                continue;
+            }
+            String date = flight.getThoiGianKhoiHanh().toLocalDate().toString();
+            BigDecimal total = fare.getGiaBan().add(fare.getThuePhi());
+            minPrices.merge(date, total, BigDecimal::min);
+        }
+        return minPrices;
     }
 
     public FlightDetailResponse detail(Long id) {

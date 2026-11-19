@@ -24,6 +24,7 @@ import java.time.ZoneId;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -161,5 +162,60 @@ class ChuyenBayServiceTest {
         List<TopCheapFlightResponse> result = chuyenBayService.getTopCheapFlights(10);
 
         assertThat(result).isEmpty();
+    }
+
+    @Test
+    void getMinPriceByDateRange_shouldReturnLowestAvailableFareForEachFutureDate() {
+        HangVeChuyenBay expensiveNov11 = fare(30L, LocalDateTime.of(2026, 11, 11, 8, 0), "900000", "150000");
+        HangVeChuyenBay cheapNov11 = fare(31L, LocalDateTime.of(2026, 11, 11, 12, 0), "700000", "200000");
+        HangVeChuyenBay fareOnNov12 = fare(32L, LocalDateTime.of(2026, 11, 12, 9, 0), "800000", "100000");
+        HangVeChuyenBay alreadyDeparted = fare(33L, LocalDateTime.of(2026, 11, 10, 8, 30), "100000", "100000");
+        when(hangVeChuyenBayRepository.findAvailableFaresForDateRange(
+                "HPH", "SGN",
+                LocalDateTime.of(2026, 11, 10, 0, 0), LocalDateTime.of(2026, 11, 13, 0, 0),
+                TrangThaiChuyenBay.DA_HUY, TrangThaiHang.HOAT_DONG, 2
+        )).thenReturn(List.of(expensiveNov11, cheapNov11, fareOnNov12, alreadyDeparted));
+
+        var result = chuyenBayService.getMinPriceByDateRange(
+                "hph", "sgn", java.time.LocalDate.of(2026, 11, 10), java.time.LocalDate.of(2026, 11, 12), 1, 1
+        );
+
+        assertThat(result).containsOnlyKeys("2026-11-11", "2026-11-12")
+                .containsEntry("2026-11-11", new BigDecimal("900000"))
+                .containsEntry("2026-11-12", new BigDecimal("900000"));
+        verify(hangVeChuyenBayRepository).findAvailableFaresForDateRange(
+                "HPH", "SGN",
+                LocalDateTime.of(2026, 11, 10, 0, 0), LocalDateTime.of(2026, 11, 13, 0, 0),
+                TrangThaiChuyenBay.DA_HUY, TrangThaiHang.HOAT_DONG, 2
+        );
+    }
+
+    @Test
+    void getMinPriceByDateRange_shouldRejectInvalidRoutesAndRanges() {
+        assertThatThrownBy(() -> chuyenBayService.getMinPriceByDateRange(
+                "HPH", "HPH", java.time.LocalDate.of(2026, 11, 10), java.time.LocalDate.of(2026, 11, 11), 1, 0
+        )).isInstanceOf(com.team6.quanlyvemaybay.exception.BusinessException.class)
+                .hasMessageContaining("phải khác nhau");
+
+        assertThatThrownBy(() -> chuyenBayService.getMinPriceByDateRange(
+                "HPH", "SGN", java.time.LocalDate.of(2026, 11, 12), java.time.LocalDate.of(2026, 11, 10), 1, 0
+        )).isInstanceOf(com.team6.quanlyvemaybay.exception.BusinessException.class)
+                .hasMessageContaining("Ngày bắt đầu");
+
+        assertThatThrownBy(() -> chuyenBayService.getMinPriceByDateRange(
+                "HPH", "SGN", java.time.LocalDate.of(2026, 11, 1), java.time.LocalDate.of(2026, 12, 5), 1, 0
+        )).isInstanceOf(com.team6.quanlyvemaybay.exception.BusinessException.class)
+                .hasMessageContaining("tối đa là 31 ngày");
+    }
+
+    private HangVeChuyenBay fare(Long id, LocalDateTime departure, String price, String tax) {
+        ChuyenBay flight = new ChuyenBay();
+        flight.setThoiGianKhoiHanh(departure);
+        HangVeChuyenBay fare = new HangVeChuyenBay();
+        fare.setId(id);
+        fare.setChuyenBay(flight);
+        fare.setGiaBan(new BigDecimal(price));
+        fare.setThuePhi(new BigDecimal(tax));
+        return fare;
     }
 }

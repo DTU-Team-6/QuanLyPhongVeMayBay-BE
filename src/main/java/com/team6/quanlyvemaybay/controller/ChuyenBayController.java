@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.format.annotation.DateTimeFormat;
 import java.time.LocalDate;
+import java.util.Map;
+import java.math.BigDecimal;
 
 import java.util.List;
 
@@ -44,6 +46,28 @@ public class ChuyenBayController {
             @RequestParam(required = false) String maHang) {
         var result = chuyenBayService.search(maDi, maDen, ngayDi, soNguoiLon, soTreEm, maHang);
         return ResponseEntity.ok(ApiResponse.ok(result, "Lấy danh sách chuyến bay thành công"));
+    }
+
+    @Operation(
+            summary = "Lấy giá thấp nhất theo ngày",
+            description = "Trả về map ngày và giá vé thấp nhất còn chỗ cho tuyến bay đã chọn trong khoảng ngày."
+    )
+    @GetMapping("/min-price-by-date")
+    public ResponseEntity<ApiResponse<Map<String, BigDecimal>>> getMinPriceByDateRange(
+            @RequestParam String maDi,
+            @RequestParam String maDen,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate ngayBatDau,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate ngayKetThuc,
+            @RequestParam(defaultValue = "1") @Min(1) @Max(9) int soNguoiLon,
+            @RequestParam(defaultValue = "0") @Min(0) @Max(9) int soTreEm
+    ) {
+        Map<String, BigDecimal> prices = chuyenBayService.getMinPriceByDateRange(
+                maDi, maDen, ngayBatDau, ngayKetThuc, soNguoiLon, soTreEm
+        );
+        String message = prices.isEmpty()
+                ? "Không có chuyến bay khả dụng trong khoảng ngày đã chọn"
+                : "Lấy giá thấp nhất theo ngày thành công";
+        return ResponseEntity.ok(ApiResponse.ok(prices, message));
     }
 
     @GetMapping("/{id:\\d+}")

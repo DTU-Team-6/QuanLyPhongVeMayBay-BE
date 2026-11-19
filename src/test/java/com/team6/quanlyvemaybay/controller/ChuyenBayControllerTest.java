@@ -21,6 +21,7 @@ import org.springframework.transaction.CannotCreateTransactionException;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.Mockito.when;
@@ -155,5 +156,27 @@ class ChuyenBayControllerTest {
                 .andExpect(jsonPath("$.status").value(500))
                 .andExpect(jsonPath("$.code").value("DATABASE_ERROR"))
                 .andExpect(jsonPath("$.details", hasSize(0)));
+    }
+
+    @Test
+    void getMinPriceByDateRange_shouldReturnMapOfCheapestAvailableFarePerDate() throws Exception {
+        when(chuyenBayService.getMinPriceByDateRange(
+                "HPH", "SGN", java.time.LocalDate.of(2026, 11, 20), java.time.LocalDate.of(2026, 11, 24), 1, 0
+        )).thenReturn(Map.of(
+                "2026-11-20", new BigDecimal("925000.00"),
+                "2026-11-23", new BigDecimal("985000.00")
+        ));
+
+        mockMvc.perform(get("/api/v1/flights/min-price-by-date")
+                        .param("maDi", "HPH")
+                        .param("maDen", "SGN")
+                        .param("ngayBatDau", "2026-11-20")
+                        .param("ngayKetThuc", "2026-11-24")
+                        .param("soNguoiLon", "1")
+                        .param("soTreEm", "0"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data['2026-11-20']").value(925000.00))
+                .andExpect(jsonPath("$.data['2026-11-23']").value(985000.00))
+                .andExpect(jsonPath("$.data['2026-11-21']").doesNotExist());
     }
 }

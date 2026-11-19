@@ -46,6 +46,28 @@ public interface HangVeChuyenBayRepository extends JpaRepository<HangVeChuyenBay
     @Query("""
             SELECT hv FROM HangVeChuyenBay hv
             JOIN FETCH hv.chuyenBay cb
+            JOIN FETCH cb.sanBayDi di
+            JOIN FETCH cb.sanBayDen den
+            JOIN FETCH cb.hangHangKhong h
+            WHERE di.maSanBay = :maDi AND den.maSanBay = :maDen
+              AND cb.thoiGianKhoiHanh >= :tu AND cb.thoiGianKhoiHanh < :denGio
+              AND cb.trangThai <> :trangThaiHuy AND h.trangThai = :trangThaiHang
+              AND hv.soGheTrong >= :soCho
+            ORDER BY cb.thoiGianKhoiHanh ASC, hv.giaBan ASC, hv.id ASC
+            """)
+    List<HangVeChuyenBay> findAvailableFaresForDateRange(
+            @Param("maDi") String maDi,
+            @Param("maDen") String maDen,
+            @Param("tu") LocalDateTime tu,
+            @Param("denGio") LocalDateTime denGio,
+            @Param("trangThaiHuy") TrangThaiChuyenBay trangThaiHuy,
+            @Param("trangThaiHang") TrangThaiHang trangThaiHang,
+            @Param("soCho") int soCho
+    );
+
+    @Query("""
+            SELECT hv FROM HangVeChuyenBay hv
+            JOIN FETCH hv.chuyenBay cb
             JOIN FETCH cb.hangHangKhong h
             JOIN FETCH cb.sanBayDi
             JOIN FETCH cb.sanBayDen
