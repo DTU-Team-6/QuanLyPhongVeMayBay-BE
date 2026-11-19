@@ -2,6 +2,18 @@ spring:
   application:
     name: quanlyvemaybay
 
+  mail:
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.connectiontimeout: 10000
+      mail.smtp.timeout: 10000
+      mail.smtp.writetimeout: 10000
+
   datasource:
     url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:quanlyvemaybay}?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=Asia/Ho_Chi_Minh&characterEncoding=UTF-8
     username: ${DB_USERNAME:root}
@@ -37,6 +49,7 @@ app:
     secret: ${JWT_SECRET:}
   auth:
     cookie-secure: ${COOKIE_SECURE:false}
+    mail-from: ${MAIL_FROM:}
   cloudinary:
     cloud-name: ${CLOUDINARY_CLOUD_NAME:}
     api-key: ${CLOUDINARY_API_KEY:}
