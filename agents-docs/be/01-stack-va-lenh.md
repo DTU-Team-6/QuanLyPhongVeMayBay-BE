@@ -6,7 +6,7 @@ Hãy trả lời và viết comment bằng **tiếng Việt**; tên class, biế
 ## Stack (đừng tự ý đổi)
 
 - Java **21**, Spring Boot **4.1.2**, build bằng **Gradle** (`./gradlew`), KHÔNG dùng Maven.
-- MySQL **9.7.4 LTS**, quản lý schema bằng **Flyway**. Frontend dùng ReactJS ở repo riêng `QuanLyPhongVeMayBay-FE` (file hướng dẫn của frontend nằm trong repo đó, không phải ở đây).
+- MySQL **9.7.4 LTS**. Repo hiện có các file SQL migration nhưng chưa cấu hình Flyway; việc áp dụng phải được xác nhận và thực hiện thủ công. Frontend dùng ReactJS ở repo riêng `QuanLyPhongVeMayBay-FE` (file hướng dẫn của frontend nằm trong repo đó, không phải ở đây).
 - Base package: `com.team6.quanlyvemaybay`.
 - Spring Boot 4 khác bản 3: starter web là `spring-boot-starter-webmvc` (không phải `starter-web`), Flyway có starter riêng. Nếu ví dụ trên mạng viết cho Spring Boot 3 mà lỗi, kiểm tra lại tên package/starter trước khi sửa logic.
 - Spring Boot 4 dùng **Jackson 3**: phần lõi và databind nằm ở package `tools.jackson.*` (ví dụ `tools.jackson.databind`), khác Jackson 2 là `com.fasterxml.jackson.*`. **Ngoại lệ: annotation** (`@JsonProperty`, `@JsonInclude`, `@JsonIgnore`...) vẫn ở `com.fasterxml.jackson.annotation`, không đổi. Vì vậy **không thay hàng loạt** `com.fasterxml` thành `tools.jackson`, làm vậy sẽ hỏng import của annotation. Ví dụ trên mạng viết cho Jackson 2 mà lỗi import thì chỉ đổi các import lõi/databind; xem `build.gradle` và import thực tế trong project trước khi sửa.

@@ -49,6 +49,9 @@ public class NguoiDung {
     @Column(name = "anh_dai_dien", length = 255)
     private String anhDaiDien;
 
+    @Column(name = "anh_dai_dien_public_id", length = 255)
+    private String anhDaiDienPublicId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "vai_tro", nullable = false)
     private VaiTro vaiTro;
@@ -129,6 +132,14 @@ public class NguoiDung {
 
     public void setAnhDaiDien(String anhDaiDien) {
         this.anhDaiDien = anhDaiDien;
+    }
+
+    public String getAnhDaiDienPublicId() {
+        return anhDaiDienPublicId;
+    }
+
+    public void setAnhDaiDienPublicId(String anhDaiDienPublicId) {
+        this.anhDaiDienPublicId = anhDaiDienPublicId;
     }
 
     public VaiTro getVaiTro() {

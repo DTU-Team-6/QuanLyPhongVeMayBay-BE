@@ -14,6 +14,8 @@ Mỗi người làm trên máy mình.
 4. **Lấy code:** `git clone` repo, `git checkout develop`, rồi tạo nhánh làm việc từ đó.
 5. **Chạy app** (trong cùng một cửa sổ Terminal, vì `export` chỉ có hiệu lực ở cửa sổ đó):
    ```bash
+   export DB_NAME='ve_may_bay'
+   export DB_USERNAME='veapp'
    export DB_PASSWORD='<mật khẩu của bạn>'
    export JWT_SECRET="$(openssl rand -base64 32)"
    export COOKIE_SECURE=false
@@ -21,6 +23,26 @@ Mỗi người làm trên máy mình.
    ```
    Thành công khi log có `Started QuanlyvemaybayApplication`.
 6. **Kiểm tra:** `mysql -u veapp -p ve_may_bay -e "SHOW TABLES;"` để xác nhận database đã có schema trước khi dùng API.
+
+## Chạy BE để FE kiểm thử tài khoản
+
+- Chọn phiên bản BE có đăng ký, đăng nhập, API hồ sơ và đổi mật khẩu, cùng phiên bản FE tương thích. Khi code chỉ có ở nhánh cục bộ chưa được đẩy, thành viên khác chưa thể lấy về; xác nhận commit/nhánh với người phụ trách hoặc dùng `develop` sau khi merge.
+- Sao chép `.env.example` thành `.env` nếu chưa có; điền `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD` theo database kiểm thử đã chuẩn bị. Điền `JWT_SECRET` ngẫu nhiên riêng cho môi trường, dài tối thiểu 32 byte; đặt `COOKIE_SECURE=false` cho HTTP local và `APP_FRONTEND_URL` trùng origin Vite, ví dụ `http://localhost:5173`. Không chia sẻ hoặc commit `.env` và secret.
+- Spring Boot không tự đọc file `.env`. Trên macOS/Linux, trong thư mục BE, chỉ nạp file `.env` do mình tin cậy, có cú pháp shell hợp lệ; đặt giá trị chứa ký tự đặc biệt trong dấu nháy phù hợp:
+
+  ```bash
+  set -a
+  . ./.env
+  set +a
+  ./gradlew bootRun
+  ```
+
+  Giữ terminal mở và đợi log `Started QuanlyvemaybayApplication`. Kiểm tra JDBC URL trong log trỏ đúng database. Trên PowerShell, đặt các biến trong terminal như phần Windows bên dưới; không chạy `. ./.env` kiểu Bash.
+- Database phải có schema nền tương thích; database mới tạo rỗng chưa đủ. BE hiện không tự chạy migration và `ddl-auto` là `none`. Trên đúng database kiểm thử, kiểm tra `SHOW TABLES LIKE 'phien_lam_moi';` và `SHOW COLUMNS FROM nguoi_dung LIKE 'anh_dai_dien_public_id';`. Nếu thiếu, báo và xin phép người dùng trước khi áp dụng thủ công tương ứng `src/main/resources/db/migration/V20261117_1331__them_phien_lam_moi.sql` và `V20261118_1246__them_public_id_avatar.sql`; sao lưu trước, không chạy lại migration đã áp dụng. Không dùng `schema.sql` để làm lại database vì có lệnh `DROP TABLE`.
+- Khi đã được phép áp dụng, mở MySQL bằng user có quyền với database kiểm thử, chọn đúng database (`USE ten_database;`, thay bằng tên thực tế) và kiểm tra `SELECT DATABASE();`. Từ thư mục gốc repo BE, dùng lệnh `SOURCE src/main/resources/db/migration/V20261117_1331__them_phien_lam_moi.sql;` hoặc `SOURCE src/main/resources/db/migration/V20261118_1246__them_public_id_avatar.sql;` **chỉ cho mục còn thiếu**, rồi kiểm tra lại bảng/cột bằng các lệnh trên.
+- FE sao chép `.env.example` của FE, đặt `VITE_API_BASE_URL=http://localhost:8080`, chạy `npm install` và `npm run dev`. Kiểm thử tạo tài khoản, đăng nhập, lưu hồ sơ và đổi mật khẩu qua FE. Mật khẩu mới cần đăng nhập lại sau khi access token hiện tại hết hạn; nút quên mật khẩu chưa kết nối API.
+- Đăng nhập Google/Facebook cần bật và cấu hình OAuth cùng migration `V20261117_1552__them_lien_ket_oauth.sql`; thay avatar cần cấu hình Cloudinary và signed upload preset. Hai phần này không bắt buộc để kiểm thử đăng nhập bằng mật khẩu và hồ sơ. Xem `docs/auth-api.md`; không đưa secret Cloudinary/OAuth vào FE.
+- Nếu gặp lỗi thiếu bảng/cột hoặc 500, kiểm tra tên database và migration trước; 401 có thể do chưa đăng nhập hoặc phiên hết hạn; 403 có thể do thiếu CSRF/quyền; lỗi CORS cần đối chiếu `APP_FRONTEND_URL` với origin FE. Không tắt CSRF hoặc thử ghi/xoá dữ liệu trong database của người khác.
 
 ## Windows
 
@@ -35,11 +57,18 @@ Các bước 3, 4, 6 và lệnh SQL giống hệt macOS. Chỉ khác cách cài 
    ```
 4. **Chạy app:** `export` và `./gradlew` kiểu macOS không dùng được trên PowerShell:
    ```powershell
+   $env:DB_HOST = 'localhost'
+   $env:DB_PORT = '3306'
+   $env:DB_NAME = '<tên database kiểm thử>'
+   $env:DB_USERNAME = '<tên user MySQL>'
    $env:DB_PASSWORD = '<mật khẩu của bạn>'
+   $env:JWT_SECRET = '<chuỗi ngẫu nhiên riêng dài tối thiểu 32 byte>'
+   $env:COOKIE_SECURE = 'false'
+   $env:APP_FRONTEND_URL = 'http://localhost:5173'
    .\gradlew bootRun
    ```
-   Nếu dùng **cmd** thay vì PowerShell: `set DB_PASSWORD=<mật khẩu>` (không có dấu nháy, vì cmd giữ nguyên dấu nháy làm một phần mật khẩu) rồi `gradlew bootRun`. Nếu dùng **Git Bash** thì làm đúng như macOS (`export ...`, `./gradlew bootRun`).
-5. Biến `$env:DB_PASSWORD` chỉ có hiệu lực trong cửa sổ PowerShell đó, mở cửa sổ mới phải đặt lại. Muốn cố định thì đặt bằng *Environment Variables* của Windows, nhưng chỉ làm trên máy cá nhân, không bao giờ ghi vào file trong repo.
+   Nếu dùng **cmd** thay vì PowerShell: đặt các biến tương ứng bằng `set` (ví dụ `set DB_PASSWORD=<mật khẩu>`, không có dấu nháy, vì cmd giữ nguyên dấu nháy làm một phần mật khẩu) rồi `gradlew bootRun`. Nếu dùng **Git Bash** thì làm đúng như macOS (`export ...`, `./gradlew bootRun`).
+5. Các biến `$env:...` chỉ có hiệu lực trong cửa sổ PowerShell đó, mở cửa sổ mới phải đặt lại. Muốn cố định thì đặt bằng *Environment Variables* của Windows, nhưng chỉ làm trên máy cá nhân, không bao giờ ghi vào file trong repo.
 
 ## Docker cho test (Testcontainers)
 

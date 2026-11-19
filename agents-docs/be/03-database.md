@@ -1,9 +1,9 @@
 # BE – Quy tắc về database (quan trọng nhất)
 
-- Schema nằm ở `src/main/resources/db/migration/`. `V1__init_schema.sql` (23 bảng) và `V2__seed_reference_data.sql` (dữ liệu danh mục) **đã chạy, KHÔNG sửa**. Muốn đổi schema thì thêm file mới, **đặt version theo thời gian** để hai người thêm cùng lúc không trùng số: `V<yyyyMMdd>_<HHmm>__<mo_ta>.sql` (hai dấu gạch dưới trước phần mô tả), ví dụ `V20261110_1030__them_bang_khuyen_mai.sql`.
-  - Dấu `_` trong phần version được Flyway hiểu như dấu chấm, nên thứ tự vẫn đúng và lớn hơn V1, V2.
+- Schema khởi tạo nằm ở `src/main/resources/schema.sql`; các thay đổi schema nằm ở `src/main/resources/db/migration/`. Repo hiện không có Flyway và không tự chạy SQL khởi tạo; kiểm tra database đích và áp dụng migration thủ công theo xác nhận của người dùng. Không chạy lại `schema.sql` trên database có dữ liệu vì file này chứa lệnh xoá bảng.
+  - Muốn đổi schema thì thêm file mới, **đặt version theo thời gian** để hai người thêm cùng lúc không trùng số: `V<yyyyMMdd>_<HHmm>__<mo_ta>.sql` (hai dấu gạch dưới trước phần mô tả), ví dụ `V20261110_1030__them_bang_khuyen_mai.sql`.
   - Không đổi tên hay sửa file đã merge.
-  - Nếu file của mình có thời gian nhỏ hơn một file đã được chạy ở nhánh khác, đổi tên file (chưa merge) sang thời gian mới. Không bật `spring.flyway.out-of-order` khi chưa hỏi nhóm.
+  - Nếu file của mình có thời gian nhỏ hơn một file đã được chạy ở nhánh khác, đổi tên file (chưa merge) sang thời gian mới.
   - **Trước khi tạo migration:** kiểm tra schema hiện tại, rồi báo người dùng các thay đổi schema và file migration dự kiến, đợi đồng ý mới thực hiện.
 - `spring.jpa.hibernate.ddl-auto` luôn là `none`. Không để Hibernate tự tạo hay sửa bảng.
 - Tên bảng/cột: `snake_case` tiếng Việt không dấu (`dat_cho`, `hanh_khach`, `gia_ban`). Khoá chính tên `id`, khoá ngoại dạng `<bảng>_id`.
@@ -23,5 +23,5 @@
 - Giờ bay lưu theo **UTC**, ánh xạ kiểu `Instant`.
 - Lưu **ZoneId riêng** cho sân bay đi và sân bay đến (múi giờ IANA, ví dụ `Asia/Ho_Chi_Minh`). Nơi lưu (cột ở bảng sân bay hay bảng chuyến bay) quyết định sau khi kiểm tra schema hiện tại.
 - API trả mỗi mốc giờ gồm `dateTime` (ISO 8601 có offset) và `timeZone` (IANA ZoneId).
-- Schema `V1` có thể đang dùng kiểu cột thời gian khác và chưa có cột múi giờ. Không sửa `V1`; nếu cần đổi, kiểm tra schema hiện tại, báo migration dự kiến, rồi tạo migration mới.
+- Schema hiện tại có thể đang dùng kiểu cột thời gian khác và chưa có cột múi giờ. Nếu cần đổi, kiểm tra schema hiện tại, báo migration dự kiến, rồi tạo migration mới.
 - `dateTime` trong API là giờ địa phương của sân bay kèm offset; `timeZone` là ZoneId IANA tương ứng. Xem quyết định chi tiết ở `07-chua-chot.md`.

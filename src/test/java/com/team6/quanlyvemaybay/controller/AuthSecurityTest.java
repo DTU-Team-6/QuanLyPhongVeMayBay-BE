@@ -2,13 +2,18 @@ package com.team6.quanlyvemaybay.controller;
 
 import com.team6.quanlyvemaybay.dto.auth.AuthUserResponse;
 import com.team6.quanlyvemaybay.dto.auth.PersonalInfoResponse;
+import com.team6.quanlyvemaybay.dto.auth.AvatarUpdateResponse;
+import com.team6.quanlyvemaybay.dto.auth.AvatarUploadSignatureResponse;
 import com.team6.quanlyvemaybay.entity.enums.GioiTinh;
 import com.team6.quanlyvemaybay.entity.enums.VaiTro;
 import com.team6.quanlyvemaybay.exception.GlobalExceptionHandler;
 import com.team6.quanlyvemaybay.service.AuthService;
+import com.team6.quanlyvemaybay.service.CloudinaryAvatarService;
 import com.team6.quanlyvemaybay.service.ChuyenBayService;
+import com.team6.quanlyvemaybay.service.PhienLamMoiService;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -22,6 +27,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -42,10 +48,25 @@ class AuthSecurityTest {
     private AuthService authService;
 
     @MockitoBean
+    private CloudinaryAvatarService cloudinaryAvatarService;
+
+    @MockitoBean
+    private PhienLamMoiService phienLamMoiService;
+
+    @MockitoBean
+    private java.time.Clock clock;
+
+    @MockitoBean
     private JwtDecoder jwtDecoder;
 
     @MockitoBean
     private ChuyenBayService chuyenBayService;
+
+    @BeforeEach
+    void setUp() {
+        when(phienLamMoiService.tao(anyLong(), anyBoolean())).thenReturn(
+                new PhienLamMoiService.KetQua("refresh-token", null, java.time.Instant.parse("2030-01-01T00:00:00Z"), false));
+    }
 
     @Test
     void staleAccessCookieDoesNotBlockPublicFlightsOrCsrf() throws Exception {
@@ -102,6 +123,29 @@ class AuthSecurityTest {
         mockMvc.perform(post("/api/v1/auth/logout"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+    }
+
+    @Test
+    void refreshRequiresCsrfEvenWhenAccessTokenHasExpired() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .cookie(new Cookie("access_token", "expired-token")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void refreshIgnoresExpiredAccessCookieAndRotatesCookies() throws Exception {
+        when(phienLamMoiService.lamMoi("refresh-token")).thenReturn(
+                new PhienLamMoiService.KetQua("new-refresh", "new-access",
+                        java.time.Instant.parse("2030-01-01T00:00:00Z"), false));
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .cookie(new Cookie("access_token", "expired-token"),
+                                new Cookie("refresh_token", "refresh-token"),
+                                new Cookie("XSRF-TOKEN", "csrf-value"))
+                        .header("X-XSRF-TOKEN", "csrf-value"))
+                .andExpect(status().isNoContent())
+                .andExpect(header().string("Set-Cookie",
+                        org.hamcrest.Matchers.containsString("access_token=new-access")));
+        verifyNoInteractions(jwtDecoder);
     }
 
     @Test
@@ -197,7 +241,7 @@ class AuthSecurityTest {
                 new PersonalInfoResponse(
                         42L, "user@example.com", "Nguyễn Văn B", "+84901234567",
                         null, GioiTinh.Khac,
-                        "Đà Nẵng", null, VaiTro.KHACH_HANG
+                        "Đà Nẵng", null, VaiTro.KHACH_HANG, "123456789", "Việt Nam"
                 )
         );
 
@@ -208,11 +252,14 @@ class AuthSecurityTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"hoTen":"Nguyễn Văn B","soDienThoai":"+84901234567",
-                                 "ngaySinh":null,"gioiTinh":"Khac","diaChi":"Đà Nẵng"}
+                                 "ngaySinh":null,"gioiTinh":"Khac","diaChi":"Đà Nẵng",
+                                 "cmndPassport":"123456789","quocTich":"Việt Nam"}
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.hoTen").value("Nguyễn Văn B"))
-                .andExpect(jsonPath("$.data.email").value("user@example.com"));
+                .andExpect(jsonPath("$.data.email").value("user@example.com"))
+                .andExpect(jsonPath("$.data.cmndPassport").value("123456789"))
+                .andExpect(jsonPath("$.data.quocTich").value("Việt Nam"));
     }
 
     @Test
@@ -227,6 +274,98 @@ class AuthSecurityTest {
                                 """))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+    }
+
+    @Test
+    void updatePersonalInfoRejectsInvalidCustomerFields() throws Exception {
+        when(jwtDecoder.decode("customer-token")).thenReturn(Jwt.withTokenValue("customer-token")
+                .header("alg", "HS256")
+                .subject("42")
+                .claim("role", VaiTro.KHACH_HANG.name())
+                .build());
+
+        mockMvc.perform(MockMvcRequestBuilders.put("/api/v1/auth/me")
+                        .cookie(new Cookie("access_token", "customer-token"))
+                        .cookie(new Cookie("XSRF-TOKEN", "csrf-value"))
+                        .header("X-XSRF-TOKEN", "csrf-value")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"hoTen":"Nguyễn Văn B","gioiTinh":"Khac",
+                                 "cmndPassport":"123456789012345678901","quocTich":"   "}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.details.length()").value(2));
+    }
+
+    @Test
+    void avatarEndpointsRequireAuthenticationAndCsrf() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/avatar/upload-signature")
+                        .cookie(new Cookie("XSRF-TOKEN", "csrf-value"))
+                        .header("X-XSRF-TOKEN", "csrf-value"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(post("/api/v1/auth/avatar")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"publicId":"avatar_42_0123456789abcdef0123456789abcdef"}
+                                """))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+    }
+
+    @Test
+    void authenticatedUserCanRequestAvatarUploadSignatureWithCsrf() throws Exception {
+        when(jwtDecoder.decode("customer-token")).thenReturn(Jwt.withTokenValue("customer-token")
+                .header("alg", "HS256")
+                .subject("42")
+                .claim("role", VaiTro.KHACH_HANG.name())
+                .build());
+        when(cloudinaryAvatarService.createUploadSignature(42L)).thenReturn(new AvatarUploadSignatureResponse(
+                "cloud", "api-key", "https://api.cloudinary.com/v1_1/cloud/image/upload",
+                123L, "avatar_42_0123456789abcdef0123456789abcdef",
+                "signed-value", "avatar-preset", "jpg,png,webp", 5 * 1024 * 1024
+        ));
+
+        mockMvc.perform(post("/api/v1/auth/avatar/upload-signature")
+                        .cookie(new Cookie("access_token", "customer-token"))
+                        .cookie(new Cookie("XSRF-TOKEN", "csrf-value"))
+                        .header("X-XSRF-TOKEN", "csrf-value"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.publicId").value("avatar_42_0123456789abcdef0123456789abcdef"))
+                .andExpect(jsonPath("$.data.maxFileSize").value(5 * 1024 * 1024));
+    }
+
+    @Test
+    void authenticatedUserCanSaveAvatarWithCsrf() throws Exception {
+        when(jwtDecoder.decode("customer-token")).thenReturn(Jwt.withTokenValue("customer-token")
+                .header("alg", "HS256")
+                .subject("42")
+                .claim("role", VaiTro.KHACH_HANG.name())
+                .build());
+        when(cloudinaryAvatarService.updateAvatar(anyLong(),
+                org.mockito.ArgumentMatchers.eq("avatar_42_0123456789abcdef0123456789abcdef")))
+                .thenReturn(new AvatarUpdateResponse(
+                        new PersonalInfoResponse(
+                                42L, "user@example.com", "Nguyễn Văn A", null, null, GioiTinh.Khac,
+                                null, "https://res.cloudinary.com/cloud/image/upload/avatar.jpg",
+                                VaiTro.KHACH_HANG, null, "Việt Nam"
+                        ),
+                        AvatarUpdateResponse.OldAvatarCleanupStatus.NOT_REQUIRED
+                ));
+
+        mockMvc.perform(MockMvcRequestBuilders.post("/api/v1/auth/avatar")
+                        .cookie(new Cookie("access_token", "customer-token"))
+                        .cookie(new Cookie("XSRF-TOKEN", "csrf-value"))
+                        .header("X-XSRF-TOKEN", "csrf-value")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"publicId":"avatar_42_0123456789abcdef0123456789abcdef"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.profile.anhDaiDien")
+                        .value("https://res.cloudinary.com/cloud/image/upload/avatar.jpg"))
+                .andExpect(jsonPath("$.data.oldAvatarCleanupStatus").value("NOT_REQUIRED"));
     }
 
     @Test

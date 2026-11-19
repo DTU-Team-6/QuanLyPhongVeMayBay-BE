@@ -14,6 +14,8 @@ public record PersonalInfoResponse(
         GioiTinh gioiTinh,
         String diaChi,
         String anhDaiDien,
-        VaiTro vaiTro
+        VaiTro vaiTro,
+        String cmndPassport,
+        String quocTich
 ) {
 }

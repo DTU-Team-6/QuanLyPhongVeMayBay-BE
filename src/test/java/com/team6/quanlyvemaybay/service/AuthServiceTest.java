@@ -4,6 +4,7 @@ import com.team6.quanlyvemaybay.dto.auth.ChangePasswordRequest;
 import com.team6.quanlyvemaybay.dto.auth.LoginRequest;
 import com.team6.quanlyvemaybay.dto.auth.RegisterRequest;
 import com.team6.quanlyvemaybay.dto.auth.UpdatePersonalInfoRequest;
+import com.team6.quanlyvemaybay.entity.KhachHang;
 import com.team6.quanlyvemaybay.entity.NguoiDung;
 import com.team6.quanlyvemaybay.entity.enums.GioiTinh;
 import com.team6.quanlyvemaybay.entity.enums.VaiTro;
@@ -39,6 +40,8 @@ class AuthServiceTest {
     private PasswordEncoder passwordEncoder;
     @Mock
     private JwtTokenService jwtTokenService;
+    @Mock
+    private PhienLamMoiService phienLamMoiService;
 
     private AuthService authService;
 
@@ -48,7 +51,8 @@ class AuthServiceTest {
                 nguoiDungRepository,
                 khachHangRepository,
                 passwordEncoder,
-                jwtTokenService
+                jwtTokenService,
+                phienLamMoiService
         );
     }
 
@@ -60,7 +64,9 @@ class AuthServiceTest {
                 " Nguyễn Văn A ",
                 null,
                 null,
-                null
+                null,
+                " 012345678901 ",
+                " Nhật Bản "
         );
         when(nguoiDungRepository.existsByTaiKhoanEmailIgnoreCase("user@example.com")).thenReturn(false);
         when(passwordEncoder.encode("password-123")).thenReturn("bcrypt-hash");
@@ -74,7 +80,10 @@ class AuthServiceTest {
 
         ArgumentCaptor<NguoiDung> userCaptor = ArgumentCaptor.forClass(NguoiDung.class);
         verify(nguoiDungRepository).saveAndFlush(userCaptor.capture());
-        verify(khachHangRepository).save(any());
+        ArgumentCaptor<KhachHang> customerCaptor = ArgumentCaptor.forClass(KhachHang.class);
+        verify(khachHangRepository).save(customerCaptor.capture());
+        assertEquals("012345678901", customerCaptor.getValue().getCmndPassport());
+        assertEquals("Nhật Bản", customerCaptor.getValue().getQuocTich());
         NguoiDung saved = userCaptor.getValue();
         assertEquals("user@example.com", saved.getTaiKhoanEmail());
         assertEquals("bcrypt-hash", saved.getMatKhau());
@@ -92,7 +101,7 @@ class AuthServiceTest {
         BusinessException exception = assertThrows(
                 BusinessException.class,
                 () -> authService.register(new RegisterRequest(
-                        "User@example.com", "password-123", "Nguyễn Văn A", null, null, null
+                        "User@example.com", "password-123", "Nguyễn Văn A", null, null, null, null, null
                 ))
         );
 
@@ -108,7 +117,7 @@ class AuthServiceTest {
         BusinessException exception = assertThrows(
                 BusinessException.class,
                 () -> authService.register(new RegisterRequest(
-                        "User@example.com", password, "Nguyễn Văn A", null, null, null
+                        "User@example.com", password, "Nguyễn Văn A", null, null, null, null, null
                 ))
         );
 
@@ -163,7 +172,9 @@ class AuthServiceTest {
     @Test
     void updatePersonalInfoChangesOnlyEditableProfileFields() {
         NguoiDung user = activeUser();
+        KhachHang customer = new KhachHang();
         when(nguoiDungRepository.findById(42L)).thenReturn(Optional.of(user));
+        when(khachHangRepository.findById(42L)).thenReturn(Optional.of(customer));
         when(nguoiDungRepository.save(user)).thenReturn(user);
 
         var result = authService.updatePersonalInfo(42L, new UpdatePersonalInfoRequest(
@@ -171,16 +182,71 @@ class AuthServiceTest {
                 "+84901234567",
                 java.time.LocalDate.of(1995, 4, 20),
                 GioiTinh.Nam,
-                "  Đà Nẵng  "
+                "  Đà Nẵng  ",
+                " 123456789 ",
+                " Nhật Bản "
         ));
 
         assertEquals("Nguyễn Văn B", result.hoTen());
         assertEquals("user@example.com", result.email());
         assertEquals("+84901234567", result.soDienThoai());
         assertEquals("Đà Nẵng", result.diaChi());
+        assertEquals("123456789", result.cmndPassport());
+        assertEquals("Nhật Bản", result.quocTich());
         assertEquals(VaiTro.KHACH_HANG, result.vaiTro());
         assertEquals("bcrypt-hash", user.getMatKhau());
         verify(nguoiDungRepository).save(user);
+    }
+
+    @Test
+    void currentUserIncludesCustomerProfile() {
+        NguoiDung user = activeUser();
+        KhachHang customer = new KhachHang();
+        customer.setCmndPassport("123456789");
+        customer.setQuocTich("Việt Nam");
+        when(nguoiDungRepository.findById(42L)).thenReturn(Optional.of(user));
+        when(khachHangRepository.findById(42L)).thenReturn(Optional.of(customer));
+
+        var result = authService.currentUser(42L);
+
+        assertEquals("123456789", result.cmndPassport());
+        assertEquals("Việt Nam", result.quocTich());
+    }
+
+    @Test
+    void updatePreservesCustomerFieldsWhenOmittedAndCanClearIdentity() {
+        NguoiDung user = activeUser();
+        KhachHang customer = new KhachHang();
+        customer.setCmndPassport("123456789");
+        customer.setQuocTich("Việt Nam");
+        when(nguoiDungRepository.findById(42L)).thenReturn(Optional.of(user));
+        when(khachHangRepository.findById(42L)).thenReturn(Optional.of(customer));
+        when(nguoiDungRepository.save(user)).thenReturn(user);
+
+        var result = authService.updatePersonalInfo(42L, new UpdatePersonalInfoRequest(
+                "Tên", null, null, GioiTinh.Khac, null, null, null
+        ));
+        assertEquals("123456789", result.cmndPassport());
+        assertEquals("Việt Nam", result.quocTich());
+
+        result = authService.updatePersonalInfo(42L, new UpdatePersonalInfoRequest(
+                "Tên", null, null, GioiTinh.Khac, null, "", null
+        ));
+        assertEquals(null, result.cmndPassport());
+        assertEquals("Việt Nam", result.quocTich());
+    }
+
+    @Test
+    void currentUserWithoutCustomerRoleDoesNotLoadCustomerProfile() {
+        NguoiDung user = activeUser();
+        user.setVaiTro(VaiTro.NHAN_VIEN);
+        when(nguoiDungRepository.findById(42L)).thenReturn(Optional.of(user));
+
+        var result = authService.currentUser(42L);
+
+        assertEquals(null, result.cmndPassport());
+        assertEquals(null, result.quocTich());
+        verify(khachHangRepository, never()).findById(any());
     }
 
     @Test
@@ -195,6 +261,7 @@ class AuthServiceTest {
 
         assertEquals("new-bcrypt-hash", user.getMatKhau());
         verify(nguoiDungRepository).save(user);
+        verify(phienLamMoiService).thuHoiNguoiDung(42L);
     }
 
     @Test

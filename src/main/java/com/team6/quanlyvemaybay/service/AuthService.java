@@ -30,17 +30,20 @@ public class AuthService {
     private final KhachHangRepository khachHangRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenService jwtTokenService;
+    private final PhienLamMoiService phienLamMoiService;
 
     public AuthService(
             NguoiDungRepository nguoiDungRepository,
             KhachHangRepository khachHangRepository,
             PasswordEncoder passwordEncoder,
-            JwtTokenService jwtTokenService
+            JwtTokenService jwtTokenService,
+            PhienLamMoiService phienLamMoiService
     ) {
         this.nguoiDungRepository = nguoiDungRepository;
         this.khachHangRepository = khachHangRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenService = jwtTokenService;
+        this.phienLamMoiService = phienLamMoiService;
     }
 
     @Transactional
@@ -69,6 +72,12 @@ public class AuthService {
 
         KhachHang khachHang = new KhachHang();
         khachHang.setNguoiDung(nguoiDung);
+        khachHang.setCmndPassport(request.cmndPassport() != null ? request.cmndPassport().trim() : null);
+        khachHang.setQuocTich(
+                request.quocTich() == null || request.quocTich().isBlank()
+                        ? "Việt Nam"
+                        : request.quocTich().trim()
+        );
         khachHangRepository.save(khachHang);
         return toResponse(nguoiDung);
     }
@@ -94,18 +103,29 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public PersonalInfoResponse currentUser(Long userId) {
-        return toPersonalInfoResponse(findActiveUser(userId));
+        NguoiDung nguoiDung = findActiveUser(userId);
+        return toPersonalInfoResponse(nguoiDung, findCustomerProfile(nguoiDung));
     }
 
     @Transactional
     public PersonalInfoResponse updatePersonalInfo(Long userId, UpdatePersonalInfoRequest request) {
         NguoiDung nguoiDung = findActiveUser(userId);
+        KhachHang khachHang = findCustomerProfile(nguoiDung);
+        if (khachHang != null) {
+            if (request.cmndPassport() != null) {
+                String cmndPassport = request.cmndPassport().trim();
+                khachHang.setCmndPassport(cmndPassport.isEmpty() ? null : cmndPassport);
+            }
+            if (request.quocTich() != null) {
+                khachHang.setQuocTich(request.quocTich().trim());
+            }
+        }
         nguoiDung.setHoTen(request.hoTen().trim());
         nguoiDung.setSoDienThoai(request.soDienThoai());
         nguoiDung.setNgaySinh(request.ngaySinh());
         nguoiDung.setGioiTinh(request.gioiTinh());
         nguoiDung.setDiaChi(request.diaChi() != null ? request.diaChi().trim() : null);
-        return toPersonalInfoResponse(nguoiDungRepository.save(nguoiDung));
+        return toPersonalInfoResponse(nguoiDungRepository.save(nguoiDung), khachHang);
     }
 
     @Transactional
@@ -124,6 +144,7 @@ public class AuthService {
         }
         nguoiDung.setMatKhau(passwordEncoder.encode(request.newPassword()));
         nguoiDungRepository.save(nguoiDung);
+        phienLamMoiService.thuHoiNguoiDung(userId);
     }
 
     private NguoiDung findActiveUser(Long userId) {
@@ -166,7 +187,16 @@ public class AuthService {
         );
     }
 
-    private PersonalInfoResponse toPersonalInfoResponse(NguoiDung nguoiDung) {
+    private KhachHang findCustomerProfile(NguoiDung nguoiDung) {
+        if (nguoiDung.getVaiTro() != VaiTro.KHACH_HANG) {
+            return null;
+        }
+        return khachHangRepository.findById(nguoiDung.getId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "CUSTOMER_PROFILE_NOT_FOUND", "Không tìm thấy hồ sơ khách hàng."));
+    }
+
+    private PersonalInfoResponse toPersonalInfoResponse(NguoiDung nguoiDung, KhachHang khachHang) {
         return new PersonalInfoResponse(
                 nguoiDung.getId(),
                 nguoiDung.getTaiKhoanEmail(),
@@ -176,7 +206,9 @@ public class AuthService {
                 nguoiDung.getGioiTinh(),
                 nguoiDung.getDiaChi(),
                 nguoiDung.getAnhDaiDien(),
-                nguoiDung.getVaiTro()
+                nguoiDung.getVaiTro(),
+                khachHang != null ? khachHang.getCmndPassport() : null,
+                khachHang != null ? khachHang.getQuocTich() : null
         );
     }
 
