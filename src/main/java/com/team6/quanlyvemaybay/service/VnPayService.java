@@ -5,13 +5,16 @@ import com.team6.quanlyvemaybay.dto.payment.PaymentCallbackResponse;
 import com.team6.quanlyvemaybay.dto.payment.PaymentUrlResponse;
 import com.team6.quanlyvemaybay.entity.DatCho;
 import com.team6.quanlyvemaybay.entity.ThanhToan;
+import com.team6.quanlyvemaybay.entity.VeMayBay;
 import com.team6.quanlyvemaybay.entity.enums.PhuongThucThanhToan;
 import com.team6.quanlyvemaybay.entity.enums.TrangThaiDatCho;
 import com.team6.quanlyvemaybay.entity.enums.TrangThaiThanhToan;
+import com.team6.quanlyvemaybay.entity.enums.TrangThaiVe;
 import com.team6.quanlyvemaybay.exception.BusinessException;
 import com.team6.quanlyvemaybay.exception.ResourceNotFoundException;
 import com.team6.quanlyvemaybay.repository.DatChoRepository;
 import com.team6.quanlyvemaybay.repository.ThanhToanRepository;
+import com.team6.quanlyvemaybay.repository.VeMayBayRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,13 +39,16 @@ public class VnPayService {
     private final PaymentProperties paymentProperties;
     private final ThanhToanRepository thanhToanRepository;
     private final DatChoRepository datChoRepository;
+    private final VeMayBayRepository veMayBayRepository;
 
     public VnPayService(PaymentProperties paymentProperties,
                         ThanhToanRepository thanhToanRepository,
-                        DatChoRepository datChoRepository) {
+                        DatChoRepository datChoRepository,
+                        VeMayBayRepository veMayBayRepository) {
         this.paymentProperties = paymentProperties;
         this.thanhToanRepository = thanhToanRepository;
         this.datChoRepository = datChoRepository;
+        this.veMayBayRepository = veMayBayRepository;
     }
 
     @Transactional
@@ -111,7 +117,51 @@ public class VnPayService {
         }
 
         String secureHash = hmacSHA512(vnpConfig.getHashSecret(), hashData.toString());
-        String paymentUrl = vnpConfig.getPayUrl() + "?" + query + "&vnp_SecureHash=" + secureHash;
+
+        String effectiveReturnUrl = (customReturnUrl != null && !customReturnUrl.isBlank()) ? customReturnUrl : vnpConfig.getReturnUrl();
+        String paymentUrl;
+
+        // Nếu dùng mã TMN mặc định của đồ án (DTUTEAM6) hoặc mã chưa đăng ký thực tế trên sandbox.vnpayment.vn:
+        // Tự động mô phỏng chuyển tiếp về Return URL với đầy đủ tham số kết quả và chữ ký HMAC-SHA512 hợp lệ để hoàn tất đơn trong môi trường test
+        if ("DTUTEAM6".equalsIgnoreCase(vnpConfig.getTmnCode()) || vnpConfig.getTmnCode().toUpperCase().startsWith("DTU")) {
+            Map<String, String> cbParams = new HashMap<>();
+            cbParams.put("vnp_Amount", String.valueOf(amountVnd));
+            cbParams.put("vnp_BankCode", (bankCode != null && !bankCode.isBlank()) ? bankCode.trim().toUpperCase() : "NCB");
+            cbParams.put("vnp_BankTranNo", "VNP" + System.currentTimeMillis());
+            cbParams.put("vnp_CardType", "ATM");
+            cbParams.put("vnp_OrderInfo", "Thanh toan ve may bay " + datCho.getMaDatCho());
+            cbParams.put("vnp_PayDate", now.format(VNP_DATE_FORMAT));
+            cbParams.put("vnp_ResponseCode", "00");
+            cbParams.put("vnp_TmnCode", vnpConfig.getTmnCode());
+            cbParams.put("vnp_TransactionNo", String.valueOf(System.currentTimeMillis()).substring(3));
+            cbParams.put("vnp_TransactionStatus", "00");
+            cbParams.put("vnp_TxnRef", maGiaoDich);
+
+            List<String> cbFieldNames = new ArrayList<>(cbParams.keySet());
+            Collections.sort(cbFieldNames);
+
+            StringBuilder cbHashData = new StringBuilder();
+            StringBuilder cbQuery = new StringBuilder();
+            for (String fieldName : cbFieldNames) {
+                String fieldValue = cbParams.get(fieldName);
+                if (fieldValue != null && !fieldValue.isBlank()) {
+                    String encKey = URLEncoder.encode(fieldName, StandardCharsets.US_ASCII);
+                    String encVal = URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII);
+
+                    cbHashData.append(fieldName).append('=').append(encVal).append('&');
+                    cbQuery.append(encKey).append('=').append(encVal).append('&');
+                }
+            }
+            if (cbHashData.length() > 0) {
+                cbHashData.setLength(cbHashData.length() - 1);
+                cbQuery.setLength(cbQuery.length() - 1);
+            }
+            String cbSecureHash = hmacSHA512(vnpConfig.getHashSecret(), cbHashData.toString());
+            String separator = effectiveReturnUrl.contains("?") ? "&" : "?";
+            paymentUrl = effectiveReturnUrl + separator + cbQuery + "&vnp_SecureHash=" + cbSecureHash;
+        } else {
+            paymentUrl = vnpConfig.getPayUrl() + "?" + query + "&vnp_SecureHash=" + secureHash;
+        }
 
         return new PaymentUrlResponse(
                 paymentUrl,
@@ -178,6 +228,24 @@ public class VnPayService {
         }
 
         if ("00".equals(responseCode)) {
+            String vnpAmountStr = queryParams.get("vnp_Amount");
+            if (vnpAmountStr != null && !vnpAmountStr.isBlank()) {
+                long expectedAmount = thanhToan.getSoTien().multiply(BigDecimal.valueOf(100)).longValue();
+                try {
+                    long receivedAmount = Long.parseLong(vnpAmountStr);
+                    if (receivedAmount != expectedAmount) {
+                        throw new BusinessException(HttpStatus.BAD_REQUEST, "INVALID_AMOUNT",
+                                "Số tiền callback VNPay không khớp với giao dịch gốc");
+                    }
+                } catch (NumberFormatException ex) {
+                    throw new BusinessException(HttpStatus.BAD_REQUEST, "INVALID_AMOUNT", "Định dạng vnp_Amount không hợp lệ");
+                }
+            }
+            if (datCho.getTrangThai() == TrangThaiDatCho.DA_HUY) {
+                throw new BusinessException(HttpStatus.CONFLICT, "BOOKING_CANCELLED",
+                        "Đơn đặt chỗ đã bị hủy trước khi hoàn tất thanh toán");
+            }
+
             thanhToan.setTrangThai(TrangThaiThanhToan.THANH_CONG);
             thanhToan.setMaGiaoDichDoiTac(transactionNo);
             thanhToan.setGhiChu("VNPay giao dịch thành công. Mã GD VNPay: " + transactionNo);
@@ -186,6 +254,12 @@ public class VnPayService {
             datCho.setTrangThai(TrangThaiDatCho.DA_THANH_TOAN);
             datChoRepository.save(datCho);
             thanhToanRepository.save(thanhToan);
+
+            List<VeMayBay> tickets = veMayBayRepository.findByDatChoId(datCho.getId());
+            if (!tickets.isEmpty()) {
+                tickets.forEach(t -> t.setTrangThai(TrangThaiVe.DA_THANH_TOAN));
+                veMayBayRepository.saveAll(tickets);
+            }
 
             return new PaymentCallbackResponse(
                     thanhToan.getMaGiaoDich(),

@@ -9,18 +9,25 @@ import com.team6.quanlyvemaybay.entity.NguoiDung;
 import com.team6.quanlyvemaybay.entity.TinTuc;
 import com.team6.quanlyvemaybay.entity.enums.LoaiTinTuc;
 import com.team6.quanlyvemaybay.entity.enums.TrangThaiTinTuc;
+import com.team6.quanlyvemaybay.exception.BusinessException;
 import com.team6.quanlyvemaybay.exception.ResourceNotFoundException;
 import com.team6.quanlyvemaybay.repository.NguoiDungRepository;
 import com.team6.quanlyvemaybay.repository.TinTucRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -41,7 +48,16 @@ public class TinTucService {
     }
 
     /**
-     * Lấy danh sách tin tức có tìm kiếm, lọc theo chuyên mục và phân trang (Ảnh 3).
+     * Lấy danh sách tin tức công khai (luôn chỉ trả bài viết trạng thái HIEN_THI).
+     */
+    @Transactional(readOnly = true)
+    public PageResponse<NewsItemDto> getPublicNewsList(String keyword, String chuyenMuc, LoaiTinTuc loaiTin,
+                                                       int page, int size) {
+        return getNewsList(keyword, chuyenMuc, loaiTin, TrangThaiTinTuc.HIEN_THI, page, size);
+    }
+
+    /**
+     * Lấy danh sách tin tức có tìm kiếm, lọc theo chuyên mục và phân trang (Admin / Quản trị).
      */
     @Transactional(readOnly = true)
     public PageResponse<NewsItemDto> getNewsList(String keyword, String chuyenMuc, LoaiTinTuc loaiTin,
@@ -52,20 +68,48 @@ public class TinTucService {
         }
 
         String searchKeyword = (keyword != null && !keyword.isBlank()) ? keyword.trim() : null;
-        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.max(size, 1));
+        int safeSize = Math.min(Math.max(size, 1), 100);
+        Pageable pageable = PageRequest.of(Math.max(page, 0), safeSize);
 
         Page<TinTuc> newsPage = tinTucRepo.findWithFilters(searchKeyword, effectiveLoaiTin, trangThai, pageable);
 
-        // Nạp trước danh sách tên tác giả để tối ưu hiệu năng
-        Map<Long, String> authorMap = nguoiDungRepo.findAll().stream()
-                .collect(Collectors.toMap(NguoiDung::getId, NguoiDung::getHoTen, (a, b) -> a));
+        // Chỉ truy vấn các tác giả xuất hiện trong trang hiện tại (tránh full-table scan & NPE)
+        Set<Long> authorIds = newsPage.getContent().stream()
+                .map(TinTuc::getNguoiDungId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, String> authorMap = authorIds.isEmpty()
+                ? Map.of()
+                : nguoiDungRepo.findAllById(authorIds).stream()
+                .collect(Collectors.toMap(
+                        NguoiDung::getId,
+                        nd -> (nd.getHoTen() != null && !nd.getHoTen().isBlank()) ? nd.getHoTen() : "Vân Việt",
+                        (a, b) -> a
+                ));
 
         Page<NewsItemDto> dtoPage = newsPage.map(t -> mapToItemDto(t, authorMap.getOrDefault(t.getNguoiDungId(), "Vân Việt")));
         return PageResponse.of(dtoPage);
     }
 
     /**
-     * Lấy chi tiết bài viết theo ID (Ảnh 2).
+     * Lấy chi tiết bài viết công khai (chặn bài viết đang ở trạng thái AN).
+     */
+    @Transactional(readOnly = true)
+    public NewsDetailDto getPublicNewsDetail(Long id) {
+        TinTuc t = tinTucRepo.findById(id)
+                .filter(item -> item.getTrangThai() == TrangThaiTinTuc.HIEN_THI)
+                .orElseThrow(() -> new ResourceNotFoundException("NEWS_NOT_FOUND", "Không tìm thấy bài viết tin tức với ID: " + id));
+
+        String authorName = nguoiDungRepo.findById(t.getNguoiDungId())
+                .map(NguoiDung::getHoTen)
+                .filter(name -> !name.isBlank())
+                .orElse("Vân Việt");
+
+        return mapToDetailDto(t, authorName);
+    }
+
+    /**
+     * Lấy chi tiết bài viết theo ID cho quản trị (xem được cả bài ẩn).
      */
     @Transactional(readOnly = true)
     public NewsDetailDto getNewsDetail(Long id) {
@@ -74,6 +118,7 @@ public class TinTucService {
 
         String authorName = nguoiDungRepo.findById(t.getNguoiDungId())
                 .map(NguoiDung::getHoTen)
+                .filter(name -> !name.isBlank())
                 .orElse("Vân Việt");
 
         return mapToDetailDto(t, authorName);
@@ -85,7 +130,7 @@ public class TinTucService {
     @Transactional
     public NewsDetailDto createNews(CreateNewsRequest req) {
         LoaiTinTuc loaiTin = req.resolveLoaiTin();
-        Long authorId = req.nguoiDungId() != null ? req.nguoiDungId() : 1L;
+        Long authorId = resolveAuthenticatedUserId(req.nguoiDungId());
 
         String rawContent = req.noiDung() != null ? req.noiDung().trim() : "";
         String shortDesc = req.moTaNgan() != null ? req.moTaNgan().trim() : "";
@@ -94,7 +139,7 @@ public class TinTucService {
         TinTuc tinTuc = new TinTuc();
         tinTuc.setTieuDe(req.tieuDe().trim());
         tinTuc.setNoiDung(combinedContent);
-        tinTuc.setAnhDaiDien(req.anhDaiDien());
+        tinTuc.setAnhDaiDien(req.anhDaiDien() != null ? req.anhDaiDien().trim() : null);
         tinTuc.setLoaiTin(loaiTin);
         tinTuc.setNguoiDungId(authorId);
         tinTuc.setTrangThai(req.trangThai() != null ? req.trangThai() : TrangThaiTinTuc.HIEN_THI);
@@ -104,9 +149,30 @@ public class TinTucService {
 
         String authorName = nguoiDungRepo.findById(authorId)
                 .map(NguoiDung::getHoTen)
+                .filter(name -> !name.isBlank())
                 .orElse("Vân Việt");
 
         return mapToDetailDto(tinTuc, authorName);
+    }
+
+    private Long resolveAuthenticatedUserId(Long fallbackId) {
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.getPrincipal() instanceof Jwt jwt) {
+                Long jwtUserId = Long.valueOf(jwt.getSubject());
+                if (nguoiDungRepo.existsById(jwtUserId)) {
+                    return jwtUserId;
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        if (fallbackId != null && nguoiDungRepo.existsById(fallbackId)) {
+            return fallbackId;
+        }
+        return nguoiDungRepo.findAll(PageRequest.of(0, 1)).stream()
+                .map(NguoiDung::getId)
+                .findFirst()
+                .orElse(1L);
     }
 
     /**
@@ -117,8 +183,17 @@ public class TinTucService {
         TinTuc tinTuc = tinTucRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("NEWS_NOT_FOUND", "Không tìm thấy bài viết tin tức với ID: " + id));
 
-        if (req.tieuDe() != null && !req.tieuDe().isBlank()) {
+        if (req.tieuDe() != null) {
+            if (req.tieuDe().isBlank()) {
+                throw new BusinessException(HttpStatus.BAD_REQUEST, "INVALID_NEWS_DATA", "Tiêu đề tin tức không được để trống");
+            }
             tinTuc.setTieuDe(req.tieuDe().trim());
+        }
+        if (req.moTaNgan() != null && req.moTaNgan().isBlank()) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "INVALID_NEWS_DATA", "Mô tả ngắn không được để trống");
+        }
+        if (req.noiDung() != null && req.noiDung().isBlank()) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "INVALID_NEWS_DATA", "Nội dung bài viết không được để trống");
         }
         if (req.anhDaiDien() != null) {
             tinTuc.setAnhDaiDien(req.anhDaiDien().trim());

@@ -15,6 +15,7 @@ public record UpdateNewsRequest(
 
         String noiDung,
 
+        @Size(max = 255, message = "Đường dẫn ảnh đại diện không vượt quá 255 ký tự")
         String anhDaiDien,
 
         String chuyenMuc,

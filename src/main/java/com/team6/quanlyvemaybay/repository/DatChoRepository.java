@@ -33,6 +33,23 @@ public interface DatChoRepository extends JpaRepository<DatCho, Long> {
     );
 
     @Query("""
+            SELECT dc FROM DatCho dc
+            WHERE ((:khachHangId IS NOT NULL AND dc.khachHangId = :khachHangId) OR (:email IS NOT NULL AND dc.emailNguoiDat = :email))
+              AND (:tuNgay IS NULL OR dc.ngayDat >= :tuNgay)
+              AND (:denNgay IS NULL OR dc.ngayDat < :denNgay)
+              AND (:trangThai IS NULL OR dc.trangThai = :trangThai)
+            ORDER BY dc.ngayDat DESC
+            """)
+    org.springframework.data.domain.Page<DatCho> findHistoryByCustomer(
+            @Param("khachHangId") Long khachHangId,
+            @Param("email") String email,
+            @Param("tuNgay") LocalDateTime tuNgay,
+            @Param("denNgay") LocalDateTime denNgay,
+            @Param("trangThai") TrangThaiDatCho trangThai,
+            org.springframework.data.domain.Pageable pageable
+    );
+
+    @Query("""
             SELECT nv.nguoiDungId AS nhanVienId,
                    COALESCE(nv.maNhanVien, 'ONLINE') AS maNhanVien,
                    COALESCE(nd.hoTen, 'Khách tự đặt Online') AS hoTenNhanVien,

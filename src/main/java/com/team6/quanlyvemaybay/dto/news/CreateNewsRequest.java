@@ -19,6 +19,7 @@ public record CreateNewsRequest(
         @NotBlank(message = "Nội dung bài viết không được để trống")
         String noiDung,
 
+        @Size(max = 255, message = "Đường dẫn ảnh đại diện không vượt quá 255 ký tự")
         String anhDaiDien,
 
         String chuyenMuc,

@@ -57,11 +57,14 @@ public class SecurityConfig {
         csrfRepository.setCookiePath("/");
         csrfRepository.setCookieCustomizer(cookie -> cookie.sameSite("Lax").secure(cookieSecure));
 
+        CsrfTokenRequestAttributeHandler csrfRequestHandler = new CsrfTokenRequestAttributeHandler();
+        csrfRequestHandler.setCsrfRequestAttributeName(null);
+
         http
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(csrfRepository)
-                        .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
+                        .csrfTokenRequestHandler(csrfRequestHandler)
                 )
                 .securityContext(context -> context.securityContextRepository(new NullSecurityContextRepository()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
@@ -71,18 +74,22 @@ public class SecurityConfig {
                         .requestMatchers("/oauth2/authorization/**", "/login/oauth2/code/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/auth/me").authenticated()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                        .requestMatchers("/api/v1/tin-tuc/quan-ly", "/api/v1/tin-tuc/quan-ly/**")
+                        .hasAnyRole("ADMIN", "NHAN_VIEN")
                         .requestMatchers(HttpMethod.GET,
                                 "/api/v1/flights/**", "/api/v1/public/**",
-                                "/api/v1/destinations", "/api/v1/destinations/**").permitAll()
+                                "/api/v1/destinations", "/api/v1/destinations/**",
+                                "/api/v1/tin-tuc", "/api/v1/tin-tuc/images/**", "/api/v1/tin-tuc/{id}").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/chuyen-bay/cua-toi/tra-cuu").permitAll()
                         .requestMatchers("/api/v1/nhan-vien", "/api/v1/nhan-vien/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/reports/**", "/api/v1/statistics/**",
-                                "/api/v1/ve-may-bay", "/api/v1/ve-may-bay/**", "/api/v1/tin-tuc/**",
+                                "/api/v1/ve-may-bay", "/api/v1/ve-may-bay/**",
+                                "/api/v1/tin-tuc", "/api/v1/tin-tuc/**",
                                 "/api/v1/khach-hang", "/api/v1/khach-hang/**")
                         .hasAnyRole("ADMIN", "NHAN_VIEN")
                         .requestMatchers(HttpMethod.POST, "/api/v1/destinations/**")
                         .hasAnyRole("ADMIN", "NHAN_VIEN")
-                        .requestMatchers("/api/v1/dat-cho/**")
+                        .requestMatchers("/api/v1/dat-cho", "/api/v1/dat-cho/**")
                         .hasAnyRole("ADMIN", "NHAN_VIEN", "KHACH_HANG")
                         .requestMatchers("/api/v1/chat/**")
                         .hasAnyRole("ADMIN", "KHACH_HANG")
@@ -169,7 +176,9 @@ public class SecurityConfig {
             return "GET".equals(request.getMethod()) && (
                     path.startsWith("/api/v1/flights/") || path.equals("/api/v1/flights")
                     || path.startsWith("/api/v1/public/")
-                    || path.equals("/api/v1/destinations") || path.startsWith("/api/v1/destinations/"));
+                    || path.equals("/api/v1/destinations") || path.startsWith("/api/v1/destinations/")
+                    || path.equals("/api/v1/tin-tuc")
+                    || (path.startsWith("/api/v1/tin-tuc/") && !path.startsWith("/api/v1/tin-tuc/quan-ly")));
         }
     }
 
