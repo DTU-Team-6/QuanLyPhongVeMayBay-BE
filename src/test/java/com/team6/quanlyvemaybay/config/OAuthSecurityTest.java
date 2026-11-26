@@ -2,6 +2,7 @@ package com.team6.quanlyvemaybay.config;
 
 import com.team6.quanlyvemaybay.controller.AuthController;
 import com.team6.quanlyvemaybay.service.AuthService;
+import com.team6.quanlyvemaybay.service.CloudinaryAvatarService;
 import com.team6.quanlyvemaybay.service.JwtTokenService;
 import com.team6.quanlyvemaybay.service.OAuthAccountService;
 import com.team6.quanlyvemaybay.service.PhienLamMoiService;
@@ -34,6 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class OAuthSecurityTest {
     @Autowired private MockMvc mockMvc;
     @MockitoBean private AuthService authService;
+    @MockitoBean private CloudinaryAvatarService cloudinaryAvatarService;
     @MockitoBean private PhienLamMoiService phienLamMoiService;
     @MockitoBean private OAuthAccountService accountService;
     @MockitoBean private JwtTokenService jwtTokenService;

@@ -55,6 +55,23 @@ public class ThanhToanService {
         DatCho datCho = datChoRepository.findById(req.datChoId())
                 .orElseThrow(() -> new ResourceNotFoundException("BOOKING_NOT_FOUND", "Không tìm thấy đơn đặt chỗ với ID: " + req.datChoId()));
 
+        org.springframework.security.core.Authentication auth =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof org.springframework.security.oauth2.jwt.Jwt jwt) {
+            String role = jwt.getClaimAsString("role");
+            if ("KHACH_HANG".equalsIgnoreCase(role)) {
+                Long currentUserId = Long.valueOf(jwt.getSubject());
+                String currentEmail = jwt.getClaimAsString("email");
+                boolean isOwner = (datCho.getKhachHangId() != null && datCho.getKhachHangId().equals(currentUserId))
+                        || (currentEmail != null && datCho.getEmailNguoiDat() != null
+                        && datCho.getEmailNguoiDat().equalsIgnoreCase(currentEmail));
+                if (!isOwner) {
+                    throw new BusinessException(HttpStatus.FORBIDDEN, "ACCESS_DENIED",
+                            "Bạn không có quyền thanh toán đơn đặt chỗ này");
+                }
+            }
+        }
+
         PhuongThucThanhToan phuongThuc = req.phuongThuc() != null ? req.phuongThuc() : PhuongThucThanhToan.VNPAY;
 
         return switch (phuongThuc) {
@@ -75,7 +92,25 @@ public class ThanhToanService {
         LocalDateTime end = denNgay != null ? denNgay.plusDays(1).atStartOfDay() : null;
 
         Pageable pageable = PageRequest.of(page, size);
-        Page<DatCho> bookingPage = datChoRepository.findHistory(start, end, trangThai, pageable);
+
+        org.springframework.security.core.Authentication auth =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        boolean isStaffOrAdmin = auth != null && auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_NHAN_VIEN"));
+
+        Page<DatCho> bookingPage;
+        if (isStaffOrAdmin) {
+            bookingPage = datChoRepository.findHistory(start, end, trangThai, pageable);
+        } else if (auth != null && auth.getPrincipal() instanceof org.springframework.security.oauth2.jwt.Jwt jwt) {
+            Long userId = null;
+            try {
+                userId = Long.valueOf(jwt.getSubject());
+            } catch (Exception ignored) {}
+            String email = jwt.getClaimAsString("email");
+            bookingPage = datChoRepository.findHistoryByCustomer(userId, email, start, end, trangThai, pageable);
+        } else {
+            bookingPage = Page.empty(pageable);
+        }
 
         Page<TransactionHistoryDto> dtoPage = bookingPage.map(this::toHistoryDto);
         return PageResponse.of(dtoPage);

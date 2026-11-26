@@ -7,14 +7,23 @@ import com.team6.quanlyvemaybay.dto.common.ErrorDetail;
 import com.team6.quanlyvemaybay.entity.DatCho;
 import com.team6.quanlyvemaybay.entity.HangVeChuyenBay;
 import com.team6.quanlyvemaybay.entity.HanhKhach;
+import com.team6.quanlyvemaybay.entity.VeMayBay;
+import com.team6.quanlyvemaybay.entity.enums.ChieuBay;
 import com.team6.quanlyvemaybay.entity.enums.LoaiHanhKhach;
+import com.team6.quanlyvemaybay.entity.enums.TrangThaiChuyenBay;
 import com.team6.quanlyvemaybay.entity.enums.TrangThaiDatCho;
+import com.team6.quanlyvemaybay.entity.enums.TrangThaiHang;
+import com.team6.quanlyvemaybay.entity.enums.TrangThaiVe;
 import com.team6.quanlyvemaybay.exception.BusinessException;
 import com.team6.quanlyvemaybay.exception.ResourceNotFoundException;
 import com.team6.quanlyvemaybay.repository.DatChoRepository;
 import com.team6.quanlyvemaybay.repository.HangVeChuyenBayRepository;
 import com.team6.quanlyvemaybay.repository.HanhKhachRepository;
+import com.team6.quanlyvemaybay.repository.VeMayBayRepository;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,13 +44,16 @@ public class DatChoService {
     private final HangVeChuyenBayRepository hangVeRepo;
     private final DatChoRepository datChoRepo;
     private final HanhKhachRepository hanhKhachRepo;
+    private final VeMayBayRepository veMayBayRepo;
 
     public DatChoService(HangVeChuyenBayRepository hangVeRepo,
                          DatChoRepository datChoRepo,
-                         HanhKhachRepository hanhKhachRepo) {
+                         HanhKhachRepository hanhKhachRepo,
+                         VeMayBayRepository veMayBayRepo) {
         this.hangVeRepo = hangVeRepo;
         this.datChoRepo = datChoRepo;
         this.hanhKhachRepo = hanhKhachRepo;
+        this.veMayBayRepo = veMayBayRepo;
     }
 
     @Transactional
@@ -49,11 +61,27 @@ public class DatChoService {
         HangVeChuyenBay hv = hangVeRepo.findById(req.hangVeId())
                 .orElseThrow(() -> new ResourceNotFoundException("FARE_NOT_FOUND", "Không tìm thấy hạng vé"));
 
+        if (hv.getChuyenBay().getTrangThai() == TrangThaiChuyenBay.DA_HUY) {
+            throw new BusinessException(HttpStatus.CONFLICT, "CHUYEN_BAY_DA_HUY", "Chuyến bay đã bị hủy");
+        }
+        if (hv.getChuyenBay().getHangHangKhong() != null
+                && hv.getChuyenBay().getHangHangKhong().getTrangThai() != TrangThaiHang.HOAT_DONG) {
+            throw new BusinessException(HttpStatus.CONFLICT, "HANG_NGUNG_HOAT_DONG", "Hãng hàng không hiện đang tạm ngừng khai thác");
+        }
         if (hv.getChuyenBay().getThoiGianKhoiHanh().isBefore(LocalDateTime.now())) {
             throw new BusinessException(HttpStatus.CONFLICT, "CHUYEN_BAY_DA_KHOI_HANH", "Chuyến bay đã khởi hành");
         }
 
         int effectiveSoEmBe = req.getEffectiveSoEmBe();
+        if (effectiveSoEmBe > req.soNguoiLon()) {
+            throw new BusinessException(
+                    HttpStatus.BAD_REQUEST,
+                    "INVALID_PASSENGER_DATA",
+                    "Số lượng em bé không được vượt quá số lượng người lớn đi cùng",
+                    List.of(new ErrorDetail("soEmBe", "INFANT_EXCEEDS_ADULT",
+                            "Mỗi người lớn chỉ được đi kèm tối đa 1 em bé"))
+            );
+        }
         int totalExpected = req.soNguoiLon() + req.soTreEm() + effectiveSoEmBe;
         if (req.hanhKhach().size() != totalExpected) {
             throw new BusinessException(
@@ -128,9 +156,19 @@ public class DatChoService {
 
         BigDecimal fareWithFee = hv.getGiaBan().add(hv.getThuePhi());
         BigDecimal tongGiaBan = fareWithFee.multiply(BigDecimal.valueOf(seatsToReserve));
+        BigDecimal tongGiaGoc = hv.getGiaGoc() != null
+                ? hv.getGiaGoc().multiply(BigDecimal.valueOf(seatsToReserve))
+                : BigDecimal.ZERO;
 
         DatCho dc = new DatCho();
         dc.setMaDatCho(UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase());
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.getPrincipal() instanceof Jwt jwt) {
+                dc.setKhachHangId(Long.valueOf(jwt.getSubject()));
+            }
+        } catch (Exception ignored) {
+        }
         dc.setEmailNguoiDat(req.emailNguoiDat());
         dc.setSoDienThoaiNguoiDat(req.soDienThoaiNguoiDat());
         dc.setHoTenNguoiDat(req.hoTenNguoiDat());
@@ -138,6 +176,7 @@ public class DatChoService {
         dc.setSoTreEm(req.soTreEm());
         dc.setSoEmBe(effectiveSoEmBe);
         dc.setNgayDat(LocalDateTime.now());
+        dc.setTongGiaGoc(tongGiaGoc);
         dc.setTongGiaBan(tongGiaBan);
         dc.setTrangThai(TrangThaiDatCho.CHO_THANH_TOAN);
         dc = datChoRepo.save(dc);
@@ -152,7 +191,29 @@ public class DatChoService {
             hk.setSoDienThoai(p.soDienThoai());
             hk.setCmndPassport(p.cmndPassport());
             hk.setLoaiHanhKhach(p.loaiHanhKhach());
-            hanhKhachRepo.save(hk);
+            hk = hanhKhachRepo.save(hk);
+
+            boolean isInfant = p.loaiHanhKhach() == LoaiHanhKhach.EM_BE;
+            BigDecimal veGiaGoc = isInfant ? BigDecimal.ZERO : (hv.getGiaGoc() != null ? hv.getGiaGoc() : BigDecimal.ZERO);
+            BigDecimal veGiaBan = isInfant ? BigDecimal.ZERO : hv.getGiaBan();
+            BigDecimal veThuePhi = isInfant ? BigDecimal.ZERO : hv.getThuePhi();
+
+            VeMayBay ve = new VeMayBay();
+            ve.setMaVe("VE" + UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase());
+            ve.setDatCho(dc);
+            ve.setHanhKhachId(hk.getId());
+            ve.setHoTenNguoiDi(hk.getHoTen());
+            ve.setEmailThanhToan(dc.getEmailNguoiDat());
+            ve.setHangVe(hv);
+            ve.setChieuBay(ChieuBay.CHIEU_DI);
+            ve.setGiaGoc(veGiaGoc);
+            ve.setGiaBan(veGiaBan);
+            ve.setThuePhi(veThuePhi);
+            ve.setCuocHanhLy(BigDecimal.ZERO);
+            ve.setTongGia(veGiaBan.add(veThuePhi));
+            ve.setDaInVe(false);
+            ve.setTrangThai(TrangThaiVe.CHO_THANH_TOAN);
+            veMayBayRepo.save(ve);
         }
 
         return new BookingResponse(
@@ -161,6 +222,63 @@ public class DatChoService {
                 dc.getTongGiaBan(),
                 dc.getTrangThai().name(),
                 req.hanhKhach().size()
+        );
+    }
+
+    @Transactional
+    public BookingResponse cancel(Long datChoId) {
+        DatCho dc = datChoRepo.findById(datChoId)
+                .orElseThrow(() -> new ResourceNotFoundException("BOOKING_NOT_FOUND", "Không tìm thấy mã đặt chỗ"));
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof Jwt jwt) {
+            String role = jwt.getClaimAsString("role");
+            if ("KHACH_HANG".equalsIgnoreCase(role)) {
+                Long currentUserId = Long.valueOf(jwt.getSubject());
+                String currentEmail = jwt.getClaimAsString("email");
+                boolean isOwner = (dc.getKhachHangId() != null && dc.getKhachHangId().equals(currentUserId))
+                        || (currentEmail != null && dc.getEmailNguoiDat() != null
+                        && dc.getEmailNguoiDat().equalsIgnoreCase(currentEmail));
+                if (!isOwner) {
+                    throw new BusinessException(HttpStatus.FORBIDDEN, "ACCESS_DENIED", "Bạn không có quyền hủy đặt chỗ này");
+                }
+            }
+        }
+
+        if (dc.getTrangThai() == TrangThaiDatCho.DA_HUY) {
+            return new BookingResponse(dc.getId(), dc.getMaDatCho(), dc.getTongGiaBan(), dc.getTrangThai().name(),
+                    dc.getSoNguoiLon() + dc.getSoTreEm() + dc.getSoEmBe());
+        }
+        if (dc.getTrangThai() != TrangThaiDatCho.CHO_THANH_TOAN) {
+            throw new BusinessException(HttpStatus.CONFLICT, "BOOKING_NOT_CANCELLABLE",
+                    "Chỉ có thể hủy đơn đặt chỗ đang ở trạng thái chờ thanh toán");
+        }
+
+        dc.setTrangThai(TrangThaiDatCho.DA_HUY);
+        datChoRepo.save(dc);
+
+        List<VeMayBay> tickets = veMayBayRepo.findByDatChoId(dc.getId());
+        Long hangVeIdToRelease = null;
+        for (VeMayBay ve : tickets) {
+            ve.setTrangThai(TrangThaiVe.DA_HUY);
+            if (hangVeIdToRelease == null && ve.getHangVe() != null) {
+                hangVeIdToRelease = ve.getHangVe().getId();
+            }
+        }
+        if (!tickets.isEmpty()) {
+            veMayBayRepo.saveAll(tickets);
+        }
+        int seatsToRelease = dc.getSoNguoiLon() + dc.getSoTreEm();
+        if (hangVeIdToRelease != null && seatsToRelease > 0) {
+            hangVeRepo.releaseSeats(hangVeIdToRelease, seatsToRelease);
+        }
+
+        return new BookingResponse(
+                dc.getId(),
+                dc.getMaDatCho(),
+                dc.getTongGiaBan(),
+                dc.getTrangThai().name(),
+                dc.getSoNguoiLon() + dc.getSoTreEm() + dc.getSoEmBe()
         );
     }
 }
