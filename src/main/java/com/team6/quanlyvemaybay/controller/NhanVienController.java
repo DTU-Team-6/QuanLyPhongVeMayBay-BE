@@ -1,22 +1,28 @@
 package com.team6.quanlyvemaybay.controller;
 
 import com.team6.quanlyvemaybay.dto.common.ApiResponse;
+import com.team6.quanlyvemaybay.dto.nhanvien.DanhSachNhanVienResponse;
 import com.team6.quanlyvemaybay.dto.nhanvien.SuaNhanVienRequest;
 import com.team6.quanlyvemaybay.dto.nhanvien.SuaNhanVienResponse;
 import com.team6.quanlyvemaybay.dto.nhanvien.ThemNhanVienRequest;
 import com.team6.quanlyvemaybay.dto.nhanvien.ThemNhanVienResponse;
+import com.team6.quanlyvemaybay.dto.nhanvien.TieuChiTimNhanVien;
 import com.team6.quanlyvemaybay.dto.nhanvien.XoaNhanVienResponse;
 import com.team6.quanlyvemaybay.service.NhanVienService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Size;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import java.net.URI;
 
@@ -27,6 +33,16 @@ public class NhanVienController {
 
     public NhanVienController(NhanVienService service) {
         this.service = service;
+    }
+
+    @GetMapping
+    public ApiResponse<DanhSachNhanVienResponse> danhSach(
+            @RequestParam(required = false) TieuChiTimNhanVien tieuChi,
+            @RequestParam(required = false) @Size(max = 40) String tuKhoa,
+            @RequestParam(defaultValue = "0") @Min(0) int trang,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int kichThuoc) {
+        return ApiResponse.ok(service.danhSach(tieuChi, tuKhoa, trang, kichThuoc),
+                "Lấy danh sách nhân viên thành công");
     }
 
     @PostMapping
